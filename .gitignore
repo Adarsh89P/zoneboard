@@ -1,0 +1,4 @@
+node_modules/
+data/token-*.json
+data/prep-*.json
+.env

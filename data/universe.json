@@ -1,0 +1,1316 @@
+[
+  {
+    "name": "360ONE",
+    "fut": "360ONE26NOVFUT",
+    "fut_token": 15737346,
+    "lot": 500
+  },
+  {
+    "name": "ABB",
+    "fut": "ABB26NOVFUT",
+    "fut_token": 15737602,
+    "lot": 125
+  },
+  {
+    "name": "ABCAPITAL",
+    "fut": "ABCAPITAL26NOVFUT",
+    "fut_token": 15737858,
+    "lot": 1550
+  },
+  {
+    "name": "ADANIENSOL",
+    "fut": "ADANIENSOL26NOVFUT",
+    "fut_token": 15738114,
+    "lot": 675
+  },
+  {
+    "name": "ADANIENT",
+    "fut": "ADANIENT26NOVFUT",
+    "fut_token": 15738370,
+    "lot": 309
+  },
+  {
+    "name": "ADANIGREEN",
+    "fut": "ADANIGREEN26NOVFUT",
+    "fut_token": 15738626,
+    "lot": 600
+  },
+  {
+    "name": "ADANIPORTS",
+    "fut": "ADANIPORTS26NOVFUT",
+    "fut_token": 15738882,
+    "lot": 475
+  },
+  {
+    "name": "ADANIPOWER",
+    "fut": "ADANIPOWER26NOVFUT",
+    "fut_token": 15739138,
+    "lot": 3550
+  },
+  {
+    "name": "ALKEM",
+    "fut": "ALKEM26NOVFUT",
+    "fut_token": 15739394,
+    "lot": 125
+  },
+  {
+    "name": "AMBER",
+    "fut": "AMBER26NOVFUT",
+    "fut_token": 15739650,
+    "lot": 100
+  },
+  {
+    "name": "AMBUJACEM",
+    "fut": "AMBUJACEM26NOVFUT",
+    "fut_token": 15739906,
+    "lot": 1200
+  },
+  {
+    "name": "ANANDRATHI",
+    "fut": "ANANDRATHI26NOVFUT",
+    "fut_token": 15075842,
+    "lot": 250
+  },
+  {
+    "name": "ANGELONE",
+    "fut": "ANGELONE26NOVFUT",
+    "fut_token": 15740162,
+    "lot": 2500
+  },
+  {
+    "name": "APLAPOLLO",
+    "fut": "APLAPOLLO26NOVFUT",
+    "fut_token": 15740418,
+    "lot": 350
+  },
+  {
+    "name": "APOLLOHOSP",
+    "fut": "APOLLOHOSP26NOVFUT",
+    "fut_token": 15740674,
+    "lot": 125
+  },
+  {
+    "name": "ASHOKLEY",
+    "fut": "ASHOKLEY26NOVFUT",
+    "fut_token": 15740930,
+    "lot": 5000
+  },
+  {
+    "name": "ASIANPAINT",
+    "fut": "ASIANPAINT26NOVFUT",
+    "fut_token": 15741186,
+    "lot": 250
+  },
+  {
+    "name": "ASTRAL",
+    "fut": "ASTRAL26NOVFUT",
+    "fut_token": 15741442,
+    "lot": 425
+  },
+  {
+    "name": "ATHERENERG",
+    "fut": "ATHERENERG26NOVFUT",
+    "fut_token": 15743234,
+    "lot": 375
+  },
+  {
+    "name": "AUBANK",
+    "fut": "AUBANK26NOVFUT",
+    "fut_token": 15744514,
+    "lot": 500
+  },
+  {
+    "name": "AUROPHARMA",
+    "fut": "AUROPHARMA26NOVFUT",
+    "fut_token": 15744770,
+    "lot": 550
+  },
+  {
+    "name": "AXISBANK",
+    "fut": "AXISBANK26NOVFUT",
+    "fut_token": 15745026,
+    "lot": 625
+  },
+  {
+    "name": "BAJAJ-AUTO",
+    "fut": "BAJAJ-AUTO26NOVFUT",
+    "fut_token": 15745282,
+    "lot": 75
+  },
+  {
+    "name": "BAJAJFINSV",
+    "fut": "BAJAJFINSV26NOVFUT",
+    "fut_token": 15745538,
+    "lot": 300
+  },
+  {
+    "name": "BAJFINANCE",
+    "fut": "BAJFINANCE26NOVFUT",
+    "fut_token": 15745794,
+    "lot": 750
+  },
+  {
+    "name": "BANDHANBNK",
+    "fut": "BANDHANBNK26NOVFUT",
+    "fut_token": 15746050,
+    "lot": 3600
+  },
+  {
+    "name": "BANKBARODA",
+    "fut": "BANKBARODA26NOVFUT",
+    "fut_token": 15746306,
+    "lot": 2925
+  },
+  {
+    "name": "BANKINDIA",
+    "fut": "BANKINDIA26NOVFUT",
+    "fut_token": 15746562,
+    "lot": 5200
+  },
+  {
+    "name": "BDL",
+    "fut": "BDL26NOVFUT",
+    "fut_token": 15746818,
+    "lot": 425
+  },
+  {
+    "name": "BEL",
+    "fut": "BEL26NOVFUT",
+    "fut_token": 15747074,
+    "lot": 1425
+  },
+  {
+    "name": "BHARATFORG",
+    "fut": "BHARATFORG26NOVFUT",
+    "fut_token": 15747330,
+    "lot": 500
+  },
+  {
+    "name": "BHARTIARTL",
+    "fut": "BHARTIARTL26NOVFUT",
+    "fut_token": 15747842,
+    "lot": 475
+  },
+  {
+    "name": "BHEL",
+    "fut": "BHEL26NOVFUT",
+    "fut_token": 15748098,
+    "lot": 2625
+  },
+  {
+    "name": "BIOCON",
+    "fut": "BIOCON26NOVFUT",
+    "fut_token": 15749122,
+    "lot": 2500
+  },
+  {
+    "name": "BLUESTARCO",
+    "fut": "BLUESTARCO26NOVFUT",
+    "fut_token": 15749378,
+    "lot": 325
+  },
+  {
+    "name": "BOSCHLTD",
+    "fut": "BOSCHLTD26NOVFUT",
+    "fut_token": 15749634,
+    "lot": 25
+  },
+  {
+    "name": "BPCL",
+    "fut": "BPCL26NOVFUT",
+    "fut_token": 15749890,
+    "lot": 1975
+  },
+  {
+    "name": "BRITANNIA",
+    "fut": "BRITANNIA26NOVFUT",
+    "fut_token": 15750146,
+    "lot": 125
+  },
+  {
+    "name": "BSE",
+    "fut": "BSE26NOVFUT",
+    "fut_token": 15750402,
+    "lot": 200
+  },
+  {
+    "name": "CAMS",
+    "fut": "CAMS26NOVFUT",
+    "fut_token": 15750658,
+    "lot": 825
+  },
+  {
+    "name": "CANBK",
+    "fut": "CANBK26NOVFUT",
+    "fut_token": 15750914,
+    "lot": 6750
+  },
+  {
+    "name": "CDSL",
+    "fut": "CDSL26NOVFUT",
+    "fut_token": 15751170,
+    "lot": 475
+  },
+  {
+    "name": "CGPOWER",
+    "fut": "CGPOWER26NOVFUT",
+    "fut_token": 15753474,
+    "lot": 850
+  },
+  {
+    "name": "CHOLAFIN",
+    "fut": "CHOLAFIN26NOVFUT",
+    "fut_token": 15753730,
+    "lot": 625
+  },
+  {
+    "name": "CIPLA",
+    "fut": "CIPLA26NOVFUT",
+    "fut_token": 15753986,
+    "lot": 425
+  },
+  {
+    "name": "COALINDIA",
+    "fut": "COALINDIA26NOVFUT",
+    "fut_token": 15754242,
+    "lot": 1350
+  },
+  {
+    "name": "COCHINSHIP",
+    "fut": "COCHINSHIP26NOVFUT",
+    "fut_token": 15754498,
+    "lot": 400
+  },
+  {
+    "name": "COFORGE",
+    "fut": "COFORGE26NOVFUT",
+    "fut_token": 15754754,
+    "lot": 475
+  },
+  {
+    "name": "COLPAL",
+    "fut": "COLPAL26NOVFUT",
+    "fut_token": 15755010,
+    "lot": 275
+  },
+  {
+    "name": "CONCOR",
+    "fut": "CONCOR26NOVFUT",
+    "fut_token": 15755266,
+    "lot": 1250
+  },
+  {
+    "name": "COROMANDEL",
+    "fut": "COROMANDEL26NOVFUT",
+    "fut_token": 14057730,
+    "lot": 300
+  },
+  {
+    "name": "CROMPTON",
+    "fut": "CROMPTON26NOVFUT",
+    "fut_token": 15755522,
+    "lot": 2150
+  },
+  {
+    "name": "CUB",
+    "fut": "CUB26NOVFUT",
+    "fut_token": 14059266,
+    "lot": 2325
+  },
+  {
+    "name": "CUMMINSIND",
+    "fut": "CUMMINSIND26NOVFUT",
+    "fut_token": 15755778,
+    "lot": 100
+  },
+  {
+    "name": "DABUR",
+    "fut": "DABUR26NOVFUT",
+    "fut_token": 15758082,
+    "lot": 1250
+  },
+  {
+    "name": "DATAPATTNS",
+    "fut": "DATAPATTNS26NOVFUT",
+    "fut_token": 14060546,
+    "lot": 125
+  },
+  {
+    "name": "DELHIVERY",
+    "fut": "DELHIVERY26NOVFUT",
+    "fut_token": 15758338,
+    "lot": 2075
+  },
+  {
+    "name": "DIVISLAB",
+    "fut": "DIVISLAB26NOVFUT",
+    "fut_token": 15758850,
+    "lot": 100
+  },
+  {
+    "name": "DIXON",
+    "fut": "DIXON26NOVFUT",
+    "fut_token": 15759362,
+    "lot": 50
+  },
+  {
+    "name": "DLF",
+    "fut": "DLF26NOVFUT",
+    "fut_token": 15759618,
+    "lot": 950
+  },
+  {
+    "name": "DMART",
+    "fut": "DMART26NOVFUT",
+    "fut_token": 15759874,
+    "lot": 150
+  },
+  {
+    "name": "DRREDDY",
+    "fut": "DRREDDY26NOVFUT",
+    "fut_token": 15760130,
+    "lot": 625
+  },
+  {
+    "name": "EICHERMOT",
+    "fut": "EICHERMOT26NOVFUT",
+    "fut_token": 15760386,
+    "lot": 100
+  },
+  {
+    "name": "ENRIN",
+    "fut": "ENRIN26NOVFUT",
+    "fut_token": 15092994,
+    "lot": 175
+  },
+  {
+    "name": "ETERNAL",
+    "fut": "ETERNAL26NOVFUT",
+    "fut_token": 15760642,
+    "lot": 2425
+  },
+  {
+    "name": "FEDERALBNK",
+    "fut": "FEDERALBNK26NOVFUT",
+    "fut_token": 15760898,
+    "lot": 2500
+  },
+  {
+    "name": "FORCEMOT",
+    "fut": "FORCEMOT26NOVFUT",
+    "fut_token": 15761154,
+    "lot": 25
+  },
+  {
+    "name": "FORTIS",
+    "fut": "FORTIS26NOVFUT",
+    "fut_token": 15761410,
+    "lot": 775
+  },
+  {
+    "name": "GAIL",
+    "fut": "GAIL26NOVFUT",
+    "fut_token": 15761666,
+    "lot": 3550
+  },
+  {
+    "name": "GLENMARK",
+    "fut": "GLENMARK26NOVFUT",
+    "fut_token": 15761922,
+    "lot": 375
+  },
+  {
+    "name": "GMRAIRPORT",
+    "fut": "GMRAIRPORT26NOVFUT",
+    "fut_token": 15762178,
+    "lot": 6975
+  },
+  {
+    "name": "GODFRYPHLP",
+    "fut": "GODFRYPHLP26NOVFUT",
+    "fut_token": 15762434,
+    "lot": 275
+  },
+  {
+    "name": "GODREJCP",
+    "fut": "GODREJCP26NOVFUT",
+    "fut_token": 15762690,
+    "lot": 500
+  },
+  {
+    "name": "GODREJPROP",
+    "fut": "GODREJPROP26NOVFUT",
+    "fut_token": 15762946,
+    "lot": 325
+  },
+  {
+    "name": "GRASIM",
+    "fut": "GRASIM26NOVFUT",
+    "fut_token": 15763202,
+    "lot": 250
+  },
+  {
+    "name": "GVT&D",
+    "fut": "GVT&D26NOVFUT",
+    "fut_token": 15763458,
+    "lot": 125
+  },
+  {
+    "name": "HAL",
+    "fut": "HAL26NOVFUT",
+    "fut_token": 15763970,
+    "lot": 150
+  },
+  {
+    "name": "HAVELLS",
+    "fut": "HAVELLS26NOVFUT",
+    "fut_token": 15764226,
+    "lot": 500
+  },
+  {
+    "name": "HCLTECH",
+    "fut": "HCLTECH26NOVFUT",
+    "fut_token": 15764482,
+    "lot": 400
+  },
+  {
+    "name": "HDFCAMC",
+    "fut": "HDFCAMC26NOVFUT",
+    "fut_token": 15764738,
+    "lot": 300
+  },
+  {
+    "name": "HDFCBANK",
+    "fut": "HDFCBANK26NOVFUT",
+    "fut_token": 15764994,
+    "lot": 650
+  },
+  {
+    "name": "HDFCLIFE",
+    "fut": "HDFCLIFE26NOVFUT",
+    "fut_token": 15765250,
+    "lot": 1100
+  },
+  {
+    "name": "HEROMOTOCO",
+    "fut": "HEROMOTOCO26NOVFUT",
+    "fut_token": 15765506,
+    "lot": 150
+  },
+  {
+    "name": "HINDALCO",
+    "fut": "HINDALCO26NOVFUT",
+    "fut_token": 15765762,
+    "lot": 700
+  },
+  {
+    "name": "HINDPETRO",
+    "fut": "HINDPETRO26NOVFUT",
+    "fut_token": 15767042,
+    "lot": 2025
+  },
+  {
+    "name": "HINDUNILVR",
+    "fut": "HINDUNILVR26NOVFUT",
+    "fut_token": 15767298,
+    "lot": 300
+  },
+  {
+    "name": "HINDZINC",
+    "fut": "HINDZINC26NOVFUT",
+    "fut_token": 15767554,
+    "lot": 1225
+  },
+  {
+    "name": "HYUNDAI",
+    "fut": "HYUNDAI26NOVFUT",
+    "fut_token": 15768066,
+    "lot": 275
+  },
+  {
+    "name": "ICICIBANK",
+    "fut": "ICICIBANK26NOVFUT",
+    "fut_token": 15768322,
+    "lot": 700
+  },
+  {
+    "name": "ICICIGI",
+    "fut": "ICICIGI26NOVFUT",
+    "fut_token": 15768578,
+    "lot": 325
+  },
+  {
+    "name": "ICICILIFE",
+    "fut": "ICICILIFE26NOVFUT",
+    "fut_token": 15768834,
+    "lot": 925
+  },
+  {
+    "name": "IDEA",
+    "fut": "IDEA26NOVFUT",
+    "fut_token": 15769090,
+    "lot": 71475
+  },
+  {
+    "name": "IDFCFIRSTB",
+    "fut": "IDFCFIRSTB26NOVFUT",
+    "fut_token": 15769346,
+    "lot": 9275
+  },
+  {
+    "name": "IEX",
+    "fut": "IEX26NOVFUT",
+    "fut_token": 15769602,
+    "lot": 4350
+  },
+  {
+    "name": "INDHOTEL",
+    "fut": "INDHOTEL26NOVFUT",
+    "fut_token": 15769858,
+    "lot": 1000
+  },
+  {
+    "name": "INDIANB",
+    "fut": "INDIANB26NOVFUT",
+    "fut_token": 15770114,
+    "lot": 1000
+  },
+  {
+    "name": "INDIGO",
+    "fut": "INDIGO26NOVFUT",
+    "fut_token": 15770370,
+    "lot": 150
+  },
+  {
+    "name": "INDUSINDBK",
+    "fut": "INDUSINDBK26NOVFUT",
+    "fut_token": 15771138,
+    "lot": 700
+  },
+  {
+    "name": "INDUSTOWER",
+    "fut": "INDUSTOWER26NOVFUT",
+    "fut_token": 15771394,
+    "lot": 1700
+  },
+  {
+    "name": "INFY",
+    "fut": "INFY26NOVFUT",
+    "fut_token": 15771650,
+    "lot": 400
+  },
+  {
+    "name": "INOXWIND",
+    "fut": "INOXWIND26NOVFUT",
+    "fut_token": 15772418,
+    "lot": 6400
+  },
+  {
+    "name": "IOC",
+    "fut": "IOC26NOVFUT",
+    "fut_token": 15772674,
+    "lot": 4875
+  },
+  {
+    "name": "IREDA",
+    "fut": "IREDA26NOVFUT",
+    "fut_token": 15772930,
+    "lot": 4525
+  },
+  {
+    "name": "IRFC",
+    "fut": "IRFC26NOVFUT",
+    "fut_token": 15773186,
+    "lot": 5425
+  },
+  {
+    "name": "ITC",
+    "fut": "ITC26NOVFUT",
+    "fut_token": 15773442,
+    "lot": 1725
+  },
+  {
+    "name": "JINDALSTEL",
+    "fut": "JINDALSTEL26NOVFUT",
+    "fut_token": 15773698,
+    "lot": 625
+  },
+  {
+    "name": "JIOFIN",
+    "fut": "JIOFIN26NOVFUT",
+    "fut_token": 15773954,
+    "lot": 2350
+  },
+  {
+    "name": "JSWENERGY",
+    "fut": "JSWENERGY26NOVFUT",
+    "fut_token": 15774210,
+    "lot": 1075
+  },
+  {
+    "name": "JSWSTEEL",
+    "fut": "JSWSTEEL26NOVFUT",
+    "fut_token": 15774466,
+    "lot": 675
+  },
+  {
+    "name": "JUBLFOOD",
+    "fut": "JUBLFOOD26NOVFUT",
+    "fut_token": 15774722,
+    "lot": 1250
+  },
+  {
+    "name": "KALYANKJIL",
+    "fut": "KALYANKJIL26NOVFUT",
+    "fut_token": 15774978,
+    "lot": 1350
+  },
+  {
+    "name": "KARURVYSYA",
+    "fut": "KARURVYSYA26NOVFUT",
+    "fut_token": 14090242,
+    "lot": 1550
+  },
+  {
+    "name": "KAYNES",
+    "fut": "KAYNES26NOVFUT",
+    "fut_token": 15775746,
+    "lot": 150
+  },
+  {
+    "name": "KEI",
+    "fut": "KEI26NOVFUT",
+    "fut_token": 15776002,
+    "lot": 175
+  },
+  {
+    "name": "KFINTECH",
+    "fut": "KFINTECH26NOVFUT",
+    "fut_token": 15776258,
+    "lot": 575
+  },
+  {
+    "name": "KOTAKBANK",
+    "fut": "KOTAKBANK26NOVFUT",
+    "fut_token": 15776514,
+    "lot": 2000
+  },
+  {
+    "name": "KPITTECH",
+    "fut": "KPITTECH26NOVFUT",
+    "fut_token": 15776770,
+    "lot": 775
+  },
+  {
+    "name": "LAURUSLABS",
+    "fut": "LAURUSLABS26NOVFUT",
+    "fut_token": 15777026,
+    "lot": 425
+  },
+  {
+    "name": "LICHSGFIN",
+    "fut": "LICHSGFIN26NOVFUT",
+    "fut_token": 15777282,
+    "lot": 1000
+  },
+  {
+    "name": "LICI",
+    "fut": "LICI26NOVFUT",
+    "fut_token": 15777538,
+    "lot": 1400
+  },
+  {
+    "name": "LODHA",
+    "fut": "LODHA26NOVFUT",
+    "fut_token": 15777794,
+    "lot": 625
+  },
+  {
+    "name": "LT",
+    "fut": "LT26NOVFUT",
+    "fut_token": 15778050,
+    "lot": 175
+  },
+  {
+    "name": "LTF",
+    "fut": "LTF26NOVFUT",
+    "fut_token": 15778306,
+    "lot": 2250
+  },
+  {
+    "name": "LTM",
+    "fut": "LTM26NOVFUT",
+    "fut_token": 15778562,
+    "lot": 150
+  },
+  {
+    "name": "LUPIN",
+    "fut": "LUPIN26NOVFUT",
+    "fut_token": 15778818,
+    "lot": 425
+  },
+  {
+    "name": "M&M",
+    "fut": "M&M26NOVFUT",
+    "fut_token": 15779074,
+    "lot": 200
+  },
+  {
+    "name": "MAHABANK",
+    "fut": "MAHABANK26NOVFUT",
+    "fut_token": 15779842,
+    "lot": 6500
+  },
+  {
+    "name": "MANAPPURAM",
+    "fut": "MANAPPURAM26NOVFUT",
+    "fut_token": 15780098,
+    "lot": 3000
+  },
+  {
+    "name": "MANKIND",
+    "fut": "MANKIND26NOVFUT",
+    "fut_token": 15780354,
+    "lot": 250
+  },
+  {
+    "name": "MARICO",
+    "fut": "MARICO26NOVFUT",
+    "fut_token": 15780610,
+    "lot": 1200
+  },
+  {
+    "name": "MARUTI",
+    "fut": "MARUTI26NOVFUT",
+    "fut_token": 15780866,
+    "lot": 50
+  },
+  {
+    "name": "MAXHEALTH",
+    "fut": "MAXHEALTH26NOVFUT",
+    "fut_token": 15781122,
+    "lot": 525
+  },
+  {
+    "name": "MAZDOCK",
+    "fut": "MAZDOCK26NOVFUT",
+    "fut_token": 15781890,
+    "lot": 225
+  },
+  {
+    "name": "MCX",
+    "fut": "MCX26NOVFUT",
+    "fut_token": 15782146,
+    "lot": 225
+  },
+  {
+    "name": "MFSL",
+    "fut": "MFSL26NOVFUT",
+    "fut_token": 15782402,
+    "lot": 400
+  },
+  {
+    "name": "MOTHERSON",
+    "fut": "MOTHERSON26NOVFUT",
+    "fut_token": 15782658,
+    "lot": 6150
+  },
+  {
+    "name": "MOTILALOFS",
+    "fut": "MOTILALOFS26NOVFUT",
+    "fut_token": 15782914,
+    "lot": 775
+  },
+  {
+    "name": "MPHASIS",
+    "fut": "MPHASIS26NOVFUT",
+    "fut_token": 15783170,
+    "lot": 275
+  },
+  {
+    "name": "MUTHOOTFIN",
+    "fut": "MUTHOOTFIN26NOVFUT",
+    "fut_token": 15783426,
+    "lot": 275
+  },
+  {
+    "name": "NAM-INDIA",
+    "fut": "NAM-INDIA26NOVFUT",
+    "fut_token": 15783682,
+    "lot": 625
+  },
+  {
+    "name": "NATIONALUM",
+    "fut": "NATIONALUM26NOVFUT",
+    "fut_token": 15783938,
+    "lot": 1875
+  },
+  {
+    "name": "NAUKRI",
+    "fut": "NAUKRI26NOVFUT",
+    "fut_token": 15784194,
+    "lot": 550
+  },
+  {
+    "name": "NAVINFLUOR",
+    "fut": "NAVINFLUOR26NOVFUT",
+    "fut_token": 14099458,
+    "lot": 75
+  },
+  {
+    "name": "NBCC",
+    "fut": "NBCC26NOVFUT",
+    "fut_token": 15784450,
+    "lot": 6500
+  },
+  {
+    "name": "NESTLEIND",
+    "fut": "NESTLEIND26NOVFUT",
+    "fut_token": 15785218,
+    "lot": 500
+  },
+  {
+    "name": "NHPC",
+    "fut": "NHPC26NOVFUT",
+    "fut_token": 15785474,
+    "lot": 6950
+  },
+  {
+    "name": "NIFTYFPI",
+    "fut": "NIFTYFPI26NOVFUT",
+    "fut_token": 15736834,
+    "lot": 1100
+  },
+  {
+    "name": "NMDC",
+    "fut": "NMDC26NOVFUT",
+    "fut_token": 15785730,
+    "lot": 6750
+  },
+  {
+    "name": "NTPC",
+    "fut": "NTPC26NOVFUT",
+    "fut_token": 15785986,
+    "lot": 1500
+  },
+  {
+    "name": "NYKAA",
+    "fut": "NYKAA26NOVFUT",
+    "fut_token": 15786242,
+    "lot": 3125
+  },
+  {
+    "name": "OBEROIRLTY",
+    "fut": "OBEROIRLTY26NOVFUT",
+    "fut_token": 15786498,
+    "lot": 350
+  },
+  {
+    "name": "OFSS",
+    "fut": "OFSS26NOVFUT",
+    "fut_token": 15786754,
+    "lot": 50
+  },
+  {
+    "name": "OIL",
+    "fut": "OIL26NOVFUT",
+    "fut_token": 15787010,
+    "lot": 1400
+  },
+  {
+    "name": "ONGC",
+    "fut": "ONGC26NOVFUT",
+    "fut_token": 15787266,
+    "lot": 2250
+  },
+  {
+    "name": "PAGEIND",
+    "fut": "PAGEIND26NOVFUT",
+    "fut_token": 15788034,
+    "lot": 20
+  },
+  {
+    "name": "PATANJALI",
+    "fut": "PATANJALI26NOVFUT",
+    "fut_token": 15788290,
+    "lot": 1075
+  },
+  {
+    "name": "PAYTM",
+    "fut": "PAYTM26NOVFUT",
+    "fut_token": 15788546,
+    "lot": 725
+  },
+  {
+    "name": "PERSISTENT",
+    "fut": "PERSISTENT26NOVFUT",
+    "fut_token": 15788802,
+    "lot": 125
+  },
+  {
+    "name": "PETRONET",
+    "fut": "PETRONET26NOVFUT",
+    "fut_token": 15789058,
+    "lot": 1900
+  },
+  {
+    "name": "PFC",
+    "fut": "PFC26NOVFUT",
+    "fut_token": 15789314,
+    "lot": 1300
+  },
+  {
+    "name": "PGEL",
+    "fut": "PGEL26NOVFUT",
+    "fut_token": 15789570,
+    "lot": 950
+  },
+  {
+    "name": "PHOENIXLTD",
+    "fut": "PHOENIXLTD26NOVFUT",
+    "fut_token": 15789826,
+    "lot": 350
+  },
+  {
+    "name": "PIDILITIND",
+    "fut": "PIDILITIND26NOVFUT",
+    "fut_token": 15790082,
+    "lot": 500
+  },
+  {
+    "name": "PIIND",
+    "fut": "PIIND26NOVFUT",
+    "fut_token": 15790338,
+    "lot": 175
+  },
+  {
+    "name": "PNB",
+    "fut": "PNB26NOVFUT",
+    "fut_token": 15790594,
+    "lot": 8000
+  },
+  {
+    "name": "PNBHOUSING",
+    "fut": "PNBHOUSING26NOVFUT",
+    "fut_token": 15790850,
+    "lot": 650
+  },
+  {
+    "name": "POLICYBZR",
+    "fut": "POLICYBZR26NOVFUT",
+    "fut_token": 15791618,
+    "lot": 350
+  },
+  {
+    "name": "POLYCAB",
+    "fut": "POLYCAB26NOVFUT",
+    "fut_token": 15792386,
+    "lot": 125
+  },
+  {
+    "name": "POWERGRID",
+    "fut": "POWERGRID26NOVFUT",
+    "fut_token": 15792642,
+    "lot": 1900
+  },
+  {
+    "name": "POWERINDIA",
+    "fut": "POWERINDIA26NOVFUT",
+    "fut_token": 15792898,
+    "lot": 25
+  },
+  {
+    "name": "PREMIERENE",
+    "fut": "PREMIERENE26NOVFUT",
+    "fut_token": 15793154,
+    "lot": 650
+  },
+  {
+    "name": "PRESTIGE",
+    "fut": "PRESTIGE26NOVFUT",
+    "fut_token": 15793410,
+    "lot": 450
+  },
+  {
+    "name": "RADICO",
+    "fut": "RADICO26NOVFUT",
+    "fut_token": 15793666,
+    "lot": 150
+  },
+  {
+    "name": "RBLBANK",
+    "fut": "RBLBANK26NOVFUT",
+    "fut_token": 15793922,
+    "lot": 3175
+  },
+  {
+    "name": "RECLTD",
+    "fut": "RECLTD26NOVFUT",
+    "fut_token": 15794178,
+    "lot": 1575
+  },
+  {
+    "name": "RELIANCE",
+    "fut": "RELIANCE26NOVFUT",
+    "fut_token": 15794434,
+    "lot": 500
+  },
+  {
+    "name": "RVNL",
+    "fut": "RVNL26NOVFUT",
+    "fut_token": 15794690,
+    "lot": 1925
+  },
+  {
+    "name": "SAGILITY",
+    "fut": "SAGILITY26NOVFUT",
+    "fut_token": 15795458,
+    "lot": 12000
+  },
+  {
+    "name": "SAIL",
+    "fut": "SAIL26NOVFUT",
+    "fut_token": 15795714,
+    "lot": 4700
+  },
+  {
+    "name": "SBICARD",
+    "fut": "SBICARD26NOVFUT",
+    "fut_token": 15796226,
+    "lot": 800
+  },
+  {
+    "name": "SBILIFE",
+    "fut": "SBILIFE26NOVFUT",
+    "fut_token": 15796482,
+    "lot": 375
+  },
+  {
+    "name": "SBIN",
+    "fut": "SBIN26NOVFUT",
+    "fut_token": 15796738,
+    "lot": 750
+  },
+  {
+    "name": "SHREECEM",
+    "fut": "SHREECEM26NOVFUT",
+    "fut_token": 15796994,
+    "lot": 25
+  },
+  {
+    "name": "SHRIRAMFIN",
+    "fut": "SHRIRAMFIN26NOVFUT",
+    "fut_token": 15797250,
+    "lot": 825
+  },
+  {
+    "name": "SIEMENS",
+    "fut": "SIEMENS26NOVFUT",
+    "fut_token": 15797506,
+    "lot": 175
+  },
+  {
+    "name": "SOLARINDS",
+    "fut": "SOLARINDS26NOVFUT",
+    "fut_token": 15797762,
+    "lot": 25
+  },
+  {
+    "name": "SONACOMS",
+    "fut": "SONACOMS26NOVFUT",
+    "fut_token": 15798018,
+    "lot": 1225
+  },
+  {
+    "name": "SRF",
+    "fut": "SRF26NOVFUT",
+    "fut_token": 15798274,
+    "lot": 200
+  },
+  {
+    "name": "SUNPHARMA",
+    "fut": "SUNPHARMA26NOVFUT",
+    "fut_token": 15798530,
+    "lot": 350
+  },
+  {
+    "name": "SUPREMEIND",
+    "fut": "SUPREMEIND26NOVFUT",
+    "fut_token": 15798786,
+    "lot": 175
+  },
+  {
+    "name": "SUZLON",
+    "fut": "SUZLON26NOVFUT",
+    "fut_token": 15799042,
+    "lot": 12700
+  },
+  {
+    "name": "SWIGGY",
+    "fut": "SWIGGY26NOVFUT",
+    "fut_token": 15799298,
+    "lot": 1825
+  },
+  {
+    "name": "SYRMA",
+    "fut": "SYRMA26NOVFUT",
+    "fut_token": 14116866,
+    "lot": 325
+  },
+  {
+    "name": "TATACONSUM",
+    "fut": "TATACONSUM26NOVFUT",
+    "fut_token": 15799810,
+    "lot": 550
+  },
+  {
+    "name": "TATAELXSI",
+    "fut": "TATAELXSI26NOVFUT",
+    "fut_token": 15800578,
+    "lot": 125
+  },
+  {
+    "name": "TATAPOWER",
+    "fut": "TATAPOWER26NOVFUT",
+    "fut_token": 15800834,
+    "lot": 1450
+  },
+  {
+    "name": "TATASTEEL",
+    "fut": "TATASTEEL26NOVFUT",
+    "fut_token": 15801090,
+    "lot": 2750
+  },
+  {
+    "name": "TCS",
+    "fut": "TCS26NOVFUT",
+    "fut_token": 15801346,
+    "lot": 225
+  },
+  {
+    "name": "TECHM",
+    "fut": "TECHM26NOVFUT",
+    "fut_token": 15801602,
+    "lot": 600
+  },
+  {
+    "name": "TIINDIA",
+    "fut": "TIINDIA26NOVFUT",
+    "fut_token": 15802370,
+    "lot": 200
+  },
+  {
+    "name": "TITAN",
+    "fut": "TITAN26NOVFUT",
+    "fut_token": 15802626,
+    "lot": 175
+  },
+  {
+    "name": "TMPV",
+    "fut": "TMPV26NOVFUT",
+    "fut_token": 15802882,
+    "lot": 1600
+  },
+  {
+    "name": "TORNTPHARM",
+    "fut": "TORNTPHARM26NOVFUT",
+    "fut_token": 15803138,
+    "lot": 125
+  },
+  {
+    "name": "TRENT",
+    "fut": "TRENT26NOVFUT",
+    "fut_token": 15803394,
+    "lot": 225
+  },
+  {
+    "name": "TVSMOTOR",
+    "fut": "TVSMOTOR26NOVFUT",
+    "fut_token": 15804162,
+    "lot": 175
+  },
+  {
+    "name": "UJJIVANSFB",
+    "fut": "UJJIVANSFB26NOVFUT",
+    "fut_token": 15140098,
+    "lot": 8000
+  },
+  {
+    "name": "ULTRACEMCO",
+    "fut": "ULTRACEMCO26NOVFUT",
+    "fut_token": 15804418,
+    "lot": 50
+  },
+  {
+    "name": "UNIONBANK",
+    "fut": "UNIONBANK26NOVFUT",
+    "fut_token": 15804674,
+    "lot": 4425
+  },
+  {
+    "name": "UNITDSPR",
+    "fut": "UNITDSPR26NOVFUT",
+    "fut_token": 15804930,
+    "lot": 400
+  },
+  {
+    "name": "UNOMINDA",
+    "fut": "UNOMINDA26NOVFUT",
+    "fut_token": 15805186,
+    "lot": 550
+  },
+  {
+    "name": "UPL",
+    "fut": "UPL26NOVFUT",
+    "fut_token": 15805442,
+    "lot": 1355
+  },
+  {
+    "name": "VBL",
+    "fut": "VBL26NOVFUT",
+    "fut_token": 15805698,
+    "lot": 1275
+  },
+  {
+    "name": "VEDL",
+    "fut": "VEDL26NOVFUT",
+    "fut_token": 15805954,
+    "lot": 1150
+  },
+  {
+    "name": "VMM",
+    "fut": "VMM26NOVFUT",
+    "fut_token": 15806210,
+    "lot": 4850
+  },
+  {
+    "name": "VOLTAS",
+    "fut": "VOLTAS26NOVFUT",
+    "fut_token": 15806466,
+    "lot": 375
+  },
+  {
+    "name": "WAAREEENER",
+    "fut": "WAAREEENER26NOVFUT",
+    "fut_token": 15806722,
+    "lot": 175
+  },
+  {
+    "name": "WIPRO",
+    "fut": "WIPRO26NOVFUT",
+    "fut_token": 15806978,
+    "lot": 3000
+  },
+  {
+    "name": "YESBANK",
+    "fut": "YESBANK26NOVFUT",
+    "fut_token": 15808002,
+    "lot": 31100
+  },
+  {
+    "name": "ZYDUSLIFE",
+    "fut": "ZYDUSLIFE26NOVFUT",
+    "fut_token": 15808258,
+    "lot": 450
+  }
+]

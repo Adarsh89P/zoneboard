@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en-IN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OB Scanner</title>
+<meta name="theme-color" content="#0a0d12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #0a0d12; --panel: #11161e; --panel-2: #161c26; --line: #222a36; --text: #e6ebf2; --muted: #8b95a5;
+    --bull: #22c55e; --bull-soft: rgba(34,197,94,.14); --bear: #f43f5e; --bear-soft: rgba(244,63,94,.14);
+    --amber: #f59e0b; --blue: #60a5fa; --ob: rgba(96,165,250,.20); --ob-line: #60a5fa;
+    --mono: "JetBrains Mono", ui-monospace, monospace; --sans: "Inter Tight", system-ui, sans-serif;
+    --r: 14px;
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f1f3f6; --line: #e3e7ed; --text: #0f1720; --muted: #5d6b7c;
+    --bull: #16a34a; --bull-soft: rgba(22,163,74,.10); --bear: #e11d48; --bear-soft: rgba(225,29,72,.09);
+    --ob: rgba(37,99,235,.13); --ob-line: #2563eb; --blue: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  button { font: inherit; color: inherit; }
+
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px clamp(14px, 3vw, 28px); background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.01em; font-size: 17px; }
+  .logo i { width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg, var(--bull), var(--blue)); }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px; background: var(--panel-2);
+    border: 1px solid var(--line); font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .dot.live { background: var(--bull); box-shadow: 0 0 0 0 var(--bull); animation: ping 1.8s infinite; }
+  .dot.pre { background: var(--amber); }
+  @keyframes ping { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  .spacer { flex: 1; }
+  .asof { font-size: 12.5px; color: var(--muted); }
+  .btn { appearance: none; border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 8px 12px;
+    font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: none; color: var(--text); }
+  .btn.icon { padding: 7px; display: grid; place-items: center; }
+  @media (max-width: 520px) { .asof { order: 5; width: 100%; } .pill { font-size: 12px; } }
+  .btn.primary { background: var(--bull); border-color: var(--bull); color: #04130a; }
+
+  main { padding: 16px clamp(14px, 3vw, 28px) 40px; display: grid; gap: 16px; max-width: 1500px; margin: 0 auto; }
+  .note { padding: 12px 14px; border-radius: var(--r); background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+
+  /* market picture */
+  .xray { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: grid; gap: 12px; }
+  .xray-top { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; font-size: 13px; color: var(--muted); }
+  .xray-top b { font-size: 20px; color: var(--text); margin-right: 4px; }
+  .xray-top .bu b { color: var(--bull); } .xray-top .be b { color: var(--bear); }
+  .breadth { height: 6px; border-radius: 999px; overflow: hidden; display: flex; background: var(--panel-2); }
+  .breadth i { display: block; height: 100%; }
+  .dots { position: relative; height: 54px; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); }
+  .dots span { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; opacity: .85; }
+  .dots .axis { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+  .dots .lab { position: absolute; bottom: -18px; transform: translateX(-50%); font: 500 10.5px var(--mono); color: var(--muted); }
+
+  /* boards */
+  .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) { .grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1180px) { .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr); } .detail { grid-column: auto; } }
+  @media (min-width: 760px) and (max-width: 1179px) { .detail { grid-column: 1 / -1; } }
+  .board { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .board h2 { margin: 0; padding: 13px 16px; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); }
+  .board.bull h2 { color: var(--bull); } .board.bear h2 { color: var(--bear); }
+  .board h2 small { color: var(--muted); font-weight: 500; text-transform: none; letter-spacing: 0; }
+  ol { list-style: none; margin: 0; padding: 4px; max-height: 70vh; overflow: auto; }
+  li button { width: 100%; appearance: none; border: 0; background: transparent; cursor: pointer; text-align: left;
+    display: grid; grid-template-columns: 22px 1fr auto; grid-template-rows: auto auto; column-gap: 10px; row-gap: 5px;
+    padding: 10px 12px; border-radius: 10px; }
+  li button:hover { background: var(--panel-2); }
+  li button[aria-pressed="true"] { background: var(--panel-2); outline: 1px solid var(--line); }
+  .rk { grid-row: 1 / 3; align-self: center; color: var(--muted); font-size: 12px; }
+  .nm { font-weight: 700; font-size: 14.5px; letter-spacing: -.005em; }
+  .ch { justify-self: end; font-weight: 600; font-size: 14px; }
+  .bull .ch { color: var(--bull); } .bear .ch { color: var(--bear); }
+  .meta { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); }
+  .bar { flex: 1; height: 4px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; }
+  .bull .bar i { background: var(--bull); } .bear .bar i { background: var(--bear); }
+  .tag { padding: 2px 7px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
+  .tag.lb, .tag.sb { background: var(--bull-soft); color: var(--bull); }
+  .bear .tag.sb { background: var(--bear-soft); color: var(--bear); }
+  .tag.sc, .tag.lu { background: var(--panel-2); color: var(--muted); }
+
+  /* detail */
+  .detail { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 14px; align-content: start; }
+  .d-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .d-head h3 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+  .d-head .px { font-size: 20px; font-weight: 600; }
+  .d-head .badge { margin-left: auto; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .badge.bu { background: var(--bull-soft); color: var(--bull); } .badge.be { background: var(--bear-soft); color: var(--bear); }
+  .levels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  @media (min-width: 560px) { .levels { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .lv { background: var(--panel-2); border-radius: 10px; padding: 9px 11px; }
+  .lv span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+  .lv b { font-size: 14.5px; }
+  .lv.ob b { color: var(--ob-line); }
+  svg.chart { width: 100%; height: auto; display: block; background: var(--panel-2); border-radius: 10px; }
+  .facts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+  .facts b { color: var(--text); font-weight: 600; }
+  footer { color: var(--muted); font-size: 12px; line-height: 1.5; max-width: 900px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i></i>OB Scanner</div>
+  <span class="pill" id="mkt"><span class="dot"></span><span>—</span></span>
+  <span class="asof" id="asof"></span>
+  <span class="spacer"></span>
+  <a class="btn primary" id="signin" href="/login" hidden>Sign in with Zerodha</a>
+  <button class="btn icon" id="theme" type="button" aria-label="Switch theme"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+</header>
+<main>
+  <p class="note" id="note" hidden></p>
+  <section class="xray" id="xray" hidden></section>
+  <div class="grid">
+    <section class="board bull"><h2>Bullish <small id="nb"></small></h2><ol id="bull"></ol></section>
+    <section class="board bear"><h2>Bearish <small id="ne"></small></h2><ol id="bear"></ol></section>
+    <section class="detail" id="detail"><p class="note">Pick a stock to see its zone.</p></section>
+  </div>
+  <footer>A market analytics tool for personal use. It ranks and marks; it does not tell you to buy or sell anything.
+    Trading in equity derivatives carries a high risk of loss.</footer>
+</main>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmt = (v, d = 2) => v == null ? '—' : Number(v).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = (v) => v == null ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2) + '%';
+  const TAGS = { long_buildup: ['lb', 'Long build-up'], short_buildup: ['sb', 'Short build-up'], short_covering: ['sc', 'Short covering'], long_unwinding: ['lu', 'Long unwinding'] };
+  let board = null, picked = null;
+
+  try { const t = localStorage.getItem('ob-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+  $('#theme').onclick = () => {
+    const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+    try { localStorage.setItem('ob-theme', t); } catch {}
+    if (board) showDetail();
+  };
+
+  function paintStatus(s) {
+    const m = s.market || {}, pill = $('#mkt');
+    pill.querySelector('.dot').className = 'dot ' + (m.state === 'open' && s.status === 'live' ? 'live' : m.state === 'pre' ? 'pre' : '');
+    pill.lastElementChild.textContent = s.status === 'snapshot' ? 'Saved board' : (m.label || '—');
+    $('#signin').hidden = s.status !== 'signed_out';
+    const showNote = !['live', 'ready', 'snapshot'].includes(s.status) && s.note;
+    $('#note').hidden = !showNote; $('#note').textContent = showNote ? s.note : '';
+  }
+
+  function row(r, i, side) {
+    const t = TAGS[r.buildup];
+    return `<li><button type="button" data-n="${esc(r.name)}" aria-pressed="${picked === r.name}">
+      <span class="rk num">${String(i + 1).padStart(2, '0')}</span>
+      <span class="nm">${esc(r.name)}</span>
+      <span class="ch num">${pct(r.chgPct)}</span>
+      <span class="meta"><span class="bar"><i style="width:${r.score}%"></i></span><span class="num">${r.score}</span>
+        ${t ? `<span class="tag ${t[0]}">${t[1]}${r.oiChgPct != null ? ' · OI ' + pct(r.oiChgPct) : ''}</span>` : ''}</span>
+    </button></li>`;
+  }
+
+  function paintXray() {
+    const c = board.counts || {}, all = board.all || [], total = all.length || 1;
+    const lim = 5, x = (v) => 50 + Math.max(-lim, Math.min(lim, v)) / lim * 50;
+    const dots = all.map((r, i) => `<span title="${esc(r.name)} ${pct(r.chgPct)}" style="left:${x(r.chgPct)}%;top:${10 + (i * 37 % 34)}px;background:${r.score === 0 ? 'var(--muted)' : r.dir > 0 ? 'var(--bull)' : 'var(--bear)'}"></span>`).join('');
+    const ticks = [-4, -2, 0, 2, 4].map((v) => `<i class="axis" style="left:${x(v)}%"></i><em class="lab" style="left:${x(v)}%">${v > 0 ? '+' : ''}${v}%</em>`).join('');
+    $('#xray').hidden = false;
+    $('#xray').innerHTML = `<div class="xray-top"><span class="bu"><b class="num">${c.bullish ?? 0}</b>bullish</span>
+      <span class="be"><b class="num">${c.bearish ?? 0}</b>bearish</span><span><b class="num">${c.choppy ?? 0}</b>choppy</span>
+      <span>of <b class="num" style="font-size:14px">${total}</b> F&amp;O stocks</span></div>
+      <div class="breadth"><i style="width:${(c.bullish || 0) / total * 100}%;background:var(--bull)"></i><i style="width:${(c.choppy || 0) / total * 100}%;background:var(--line)"></i><i style="width:${(c.bearish || 0) / total * 100}%;background:var(--bear)"></i></div>
+      <div class="dots">${ticks}${dots}</div><div style="height:12px"></div>`;
+  }
+
+  function paint() {
+    if (!board) return;
+    $('#asof').textContent = board.asOf ? 'as of ' + new Date(board.asOf).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+    $('#bull').innerHTML = board.bull.map((r, i) => row(r, i, 'bull')).join('');
+    $('#bear').innerHTML = board.bear.map((r, i) => row(r, i, 'bear')).join('');
+    $('#nb').textContent = `top ${board.bull.length}`; $('#ne').textContent = `top ${board.bear.length}`;
+    paintXray();
+    if (!picked || ![...board.bull, ...board.bear].some((r) => r.name === picked)) picked = (board.bull.find((r) => r.zones) || board.bull[0] || board.bear[0] || {}).name;
+    showDetail();
+  }
+
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('li button'); if (!b) return;
+    picked = b.dataset.n;
+    document.querySelectorAll('li button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    showDetail();
+    if (matchMedia('(max-width: 1179px)').matches) $('#detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  function showDetail() {
+    const r = [...board.bull, ...board.bear].find((x) => x.name === picked);
+    if (!r) return;
+    const z = r.zones || {}, ob = z.orderBlock, bu = r.dir > 0;
+    const levels = bu
+      ? [['Resistance', z.resistance], ['Order block', ob && `${fmt(ob.lo)}–${fmt(ob.hi)}`, 'ob'], ['Support', z.support], ['Liquidity', z.liquidity]]
+      : [['Support', z.support], ['Order block', ob && `${fmt(ob.lo)}–${fmt(ob.hi)}`, 'ob'], ['Resistance', z.resistance], ['Liquidity', z.liquidity]];
+    const t = TAGS[r.buildup];
+    $('#detail').innerHTML = `<div class="d-head"><h3>${esc(r.name)}</h3><span class="px num">${fmt(r.ltp)}</span>
+        <span class="num" style="color:${bu ? 'var(--bull)' : 'var(--bear)'};font-weight:600">${pct(r.chgPct)}</span>
+        <span class="badge ${bu ? 'bu' : 'be'}">${bu ? 'Bullish' : 'Bearish'} · ${r.score}</span></div>
+      <div class="levels">${levels.map(([k, v, c]) => `<div class="lv ${c || ''}"><span>${k}</span><b class="num">${v == null ? '—' : typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
+      ${r.candles ? chart(r) : '<p class="note">No chart yet. Zones are worked out for the strongest ten on each side.</p>'}
+      <div class="facts">${t ? `<span>${t[1]} <b class="num">${r.oiChgPct != null ? pct(r.oiChgPct) + ' OI' : ''}</b></span>` : '<span>OI change not known</span>'}
+        ${r.atrPct != null ? `<span>Usual daily move <b class="num">${r.atrPct.toFixed(2)}%</b></span>` : ''}
+        ${r.relVol != null ? `<span>Volume <b class="num">${r.relVol.toFixed(1)}×</b> average</span>` : ''}
+        ${ob ? `<span>Zone formed <b class="num">${new Date(ob.t).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false })}</b></span>` : '<span>No unbroken order block today</span>'}</div>`;
+  }
+
+  /* 5-minute candles with the order block boxed and the levels ruled across. */
+  function chart(r) {
+    const css = getComputedStyle(document.documentElement), v = (n) => css.getPropertyValue(n).trim();
+    const c = r.candles, z = r.zones || {}, ob = z.orderBlock;
+    const W = 640, H = 300, L = 8, R = 70, T = 12, B = 22, n = c.length, cw = (W - L - R) / n;
+    const vals = c.flatMap((k) => [k[2], k[3]]).concat([z.support, z.resistance, z.liquidity, ob?.lo, ob?.hi, r.ltp].filter((x) => x != null));
+    let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * .06; lo -= pad; hi += pad;
+    const y = (p) => T + (hi - p) / (hi - lo) * (H - T - B);
+    const labels = [];
+    let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(r.name)} five-minute chart with zones">`;
+    if (ob) {
+      const i0 = Math.max(0, c.findIndex((k) => k[0] >= ob.t));
+      s += `<rect x="${L + i0 * cw}" y="${y(ob.hi)}" width="${W - R - L - i0 * cw}" height="${Math.max(2, y(ob.lo) - y(ob.hi))}" fill="${v('--ob')}" stroke="${v('--ob-line')}" stroke-width="1" stroke-dasharray="3 3"/>`;
+      s += label(y((ob.lo + ob.hi) / 2), 'OB', v('--ob-line'));
+    }
+    const line = (p, name, col) => p == null ? '' : `<line x1="${L}" x2="${W - R}" y1="${y(p)}" y2="${y(p)}" stroke="${col}" stroke-width="1" stroke-dasharray="5 4" opacity=".8"/>` + label(y(p), `${name} ${fmt(p)}`, col);
+    s += line(z.resistance, 'R', v('--bear')) + line(z.support, 'S', v('--bull')) + line(z.liquidity, 'Liq', v('--amber'));
+    c.forEach((k, i) => {
+      const up = k[4] >= k[1], col = up ? v('--bull') : v('--bear'), x = L + i * cw + cw / 2;
+      s += `<line x1="${x}" x2="${x}" y1="${y(k[2])}" y2="${y(k[3])}" stroke="${col}" stroke-width="1"/>`;
+      s += `<rect x="${x - cw * .32}" y="${y(Math.max(k[1], k[4]))}" width="${cw * .64}" height="${Math.max(1, Math.abs(y(k[1]) - y(k[4])))}" fill="${col}"/>`;
+    });
+    s += `<line x1="${L}" x2="${W - R}" y1="${y(r.ltp)}" y2="${y(r.ltp)}" stroke="${v('--text')}" stroke-width=".8" opacity=".5"/>`;
+    s += `<rect x="${W - R + 2}" y="${y(r.ltp) - 9}" width="${R - 4}" height="18" rx="4" fill="${v('--text')}"/><text x="${W - R / 2}" y="${y(r.ltp) + 4}" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="${v('--panel')}">${fmt(r.ltp)}</text>`;
+    const days = [...new Set(c.map((k) => k[0].slice(0, 10)))];
+    if (days.length > 1) { const i = c.findIndex((k) => k[0].slice(0, 10) === days[1]); s += `<line x1="${L + i * cw}" x2="${L + i * cw}" y1="${T}" y2="${H - B}" stroke="${v('--line')}"/><text x="${L + i * cw + 4}" y="${H - 7}" font-size="10" fill="${v('--muted')}" font-family="JetBrains Mono">${days[1].slice(8)}/${days[1].slice(5, 7)}</text>`; }
+    // spread the right-hand labels at least 12px apart, keeping their order
+    labels.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < labels.length; i++) labels[i].y = Math.max(labels[i].y, labels[i - 1].y + 12);
+    for (const l of labels) s += `<text x="${W - R + 4}" y="${l.y + 3.5}" font-size="10" font-family="JetBrains Mono" fill="${l.col}">${esc(l.text)}</text>`;
+    return s + '</svg>';
+    function label(yy, text, col) { labels.push({ y: yy, text, col }); return ''; }
+  }
+
+  // Data: a saved board baked into the page, or the live server's board and its stream.
+  if (window.SAVED_BOARD) { board = window.SAVED_BOARD; paintStatus({ status: 'snapshot', market: {} }); paint(); return; }
+  fetch('/api/board').then((r) => r.json()).then((d) => { paintStatus(d); board = d.board; paint(); }).catch(() => {});
+  const es = new EventSource('/api/stream');
+  es.addEventListener('board', (e) => { board = JSON.parse(e.data); paint(); });
+  es.addEventListener('status', (e) => paintStatus(JSON.parse(e.data)));
+})();
+</script>
+</body>
+</html>
