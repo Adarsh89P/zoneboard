@@ -4,14 +4,15 @@ services:
   - type: web
     name: zoneboard
     runtime: node
-    plan: starter            # stays awake through market hours; the free plan sleeps when idle
+    plan: free               # free: sleeps after 15 idle minutes and forgets data/ on every restart.
+                             # For live trading days switch to starter and uncomment the disk below.
     buildCommand: npm install --omit=dev
     startCommand: node server.mjs
     healthCheckPath: /
-    disk:                    # keeps sign-ins, today's plans and the daily Kite login across restarts
-      name: zoneboard-data
-      mountPath: /var/data
-      sizeGB: 1
+    # disk:                  # paid plans only: keeps sign-ins, today's plans and the daily Kite login
+    #   name: zoneboard-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -19,8 +20,8 @@ services:
         value: ZoneBoard
       - key: OPEN_ACCESS          # no payments yet: everyone signed in sees the full board
         value: "1"
-      - key: DATA_DIR
-        value: /var/data
+      # - key: DATA_DIR        # with the disk above
+      #   value: /var/data
       - key: BOARD_SNAPSHOT       # shown until KITE_API_KEY is set
         value: data/board-2026-11-18.json
       - key: SESSION_SECRET
