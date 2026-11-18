@@ -13,7 +13,8 @@ import { scoreStock, rankBoard, dailyStats, zones, oiDrift } from './src/engine.
 import { Accounts, google, cookie, cookies, randomToken } from './src/accounts.mjs';
 import { Razorpay, plans } from './src/payments.mjs';
 import { sampleBoard } from './src/sample.mjs';
-import { makePlan, advance, pickOption } from './src/plans.mjs';
+import { makePlan, advance, pickOption, firstPlan, finish, minuteOf } from './src/plans.mjs';
+import { replayStock, summarise } from './scripts/backtest.mjs';
 
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
@@ -113,8 +114,22 @@ const fiveMin = async (token) => {
 };
 /** Makes a plan for a row the first time it has a setup today, and moves every plan on. */
 function track(row, candles) {
-  const todays = candles.filter((x) => x.t.startsWith(ymd()));
+  // the latest session in the candles: today while trading, the last trading day after hours
+  const day = candles.at(-1)?.t.slice(0, 10) || ymd();
+  const todays = candles.filter((x) => x.t.startsWith(day));
   let p = tradePlans.get(row.name);
+  // Opened after the session: replay it, so the plans the board would have made today show with
+  // what they went on to do. Only from the candles; the server never saw them live.
+  if (!p && row.dir && todays.length && market().state !== 'open' && minuteOf(todays.at(-1).t) >= 15 * 60) {
+    const prev = candles.filter((x) => !x.t.startsWith(day));
+    p = firstPlan(row.name, prev, todays);
+    if (p && p.dir === row.dir) {
+      finish(p, todays.at(-1)); p.replayed = true;
+      p.option = pickOption(chains?.[row.name], row.ltp, p.side, day);
+      tradePlans.set(row.name, p);
+    }
+    return;
+  }
   if (!p && row.dir && todays.length) {
     p = makePlan(row, candles);
     if (p) { p.option = pickOption(chains?.[row.name], row.ltp, p.side, ymd()); tradePlans.set(row.name, p); }
@@ -122,6 +137,28 @@ function track(row, candles) {
 }
 let backtest = null;
 try { const b = JSON.parse(fs.readFileSync(path.join(DATA, 'backtest.json'), 'utf8')); backtest = { ...b.summary, sessions: new Set(b.trades.map((t) => t.day)).size }; } catch { }
+
+/* ── 60-day backtest on Kite history, started from the board by the admin ── */
+const bt = { running: false, done: 0, total: 0, error: '' };
+async function runBacktest(days = 60) {
+  if (bt.running) return;
+  Object.assign(bt, { running: true, done: 0, total: 0, error: '' });
+  try {
+    if (!universe) await prepare();
+    bt.total = universe.length;
+    const from = daysAgo(Math.ceil(days * 1.45)), trades = [];
+    for (const u of universe) {
+      try { trades.push(...replayStock(u.name, await kite.historical(u.token, '5minute', from, daysAgo(1)))); } catch (e) { if (e.status === 403) throw e; }
+      bt.done++;
+      if (bt.done % 10 === 0) push('backtest', { ...bt });
+    }
+    const summary = summarise(trades);
+    fs.writeFileSync(path.join(DATA, 'backtest.json'), JSON.stringify({ summary, trades, ranAt: new Date().toISOString(), days }));
+    backtest = { ...summary, sessions: new Set(trades.map((t) => t.day)).size, stocks: universe.length, ranAt: new Date().toISOString() };
+    if (board) { board.backtest = backtest; push('board', board); }
+  } catch (e) { bt.error = e.message; }
+  finally { bt.running = false; push('backtest', { ...bt }); }
+}
 
 /* ── one scan ───────────────────────────────────────────────────────── */
 async function scan() {
@@ -386,6 +423,17 @@ http.createServer(async (req, res) => {
         const u = accounts.grant(user.id, plan.days, { orderId: 'test', paymentId: 'test-' + Date.now(), plan: plan.id, amount: 0 });
         return json(res, 200, { ok: true, paidUntil: u.paidUntil, test: true });
       }
+    }
+
+    /* the 60-day backtest: admin only, runs on the server with today's Zerodha session */
+    if (p === '/api/admin/backtest') {
+      if (!isAdmin(user)) return json(res, 403, { error: 'Admin only' });
+      if (req.method === 'POST') {
+        if (!csrfOk(req)) return json(res, 403, { error: 'Refresh the page and try again' });
+        if (!kite.accessToken) return json(res, 409, { error: 'Connect Zerodha first' });
+        runBacktest();
+      }
+      return json(res, 200, { ...bt });
     }
 
     /* the operator's daily Zerodha sign-in: admin only */
