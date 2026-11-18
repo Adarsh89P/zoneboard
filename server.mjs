@@ -214,7 +214,8 @@ const DEV_LOGIN = process.env.DEV_LOGIN === '1';
 // No payments yet: every signed-in user gets the full board, and the pricing parts of the site are hidden.
 const OPEN_ACCESS = process.env.OPEN_ACCESS === '1';
 // Sign-in with one shared password, for a private deployment without Google set up.
-const SITE_PASSWORD = process.env.SITE_PASSWORD || '';
+// Trimmed: a password pasted into a hosting dashboard easily picks up a trailing space or newline.
+const SITE_PASSWORD = (process.env.SITE_PASSWORD || '').trim();
 const ADMIN = (process.env.ADMIN_EMAIL || '').toLowerCase();
 const G = { clientId: process.env.GOOGLE_CLIENT_ID || '', clientSecret: process.env.GOOGLE_CLIENT_SECRET || '', redirectUri: BASE + '/auth/google/callback' };
 const pay = new Razorpay(process.env.RAZORPAY_KEY_ID || '', process.env.RAZORPAY_KEY_SECRET || '');
@@ -318,8 +319,13 @@ http.createServer(async (req, res) => {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
       if (tooMany(ip)) return json(res, 429, { error: 'Too many tries. Wait ten minutes.' });
       const { password } = await body(req);
-      const a = crypto.createHash('sha256').update(String(password || '')).digest(), b = crypto.createHash('sha256').update(SITE_PASSWORD).digest();
-      if (!crypto.timingSafeEqual(a, b)) return json(res, 401, { error: 'Wrong password' });
+      const given = String(password || '').trim();
+      const a = crypto.createHash('sha256').update(given).digest(), b = crypto.createHash('sha256').update(SITE_PASSWORD).digest();
+      if (!crypto.timingSafeEqual(a, b)) {
+        // the lengths only, never the passwords: enough to tell a typo from a wrong setting
+        console.warn(`password sign-in refused: ${given.length} characters given, ${SITE_PASSWORD.length} expected`);
+        return json(res, 401, { error: 'Wrong password' });
+      }
       const u = accounts.upsert({ email: ADMIN || 'owner@zoneboard.local', name: 'Owner' });
       return json(res, 200, { ok: true }, { 'Set-Cookie': accounts.sessionCookie(u.id, SECURE) });
     }
