@@ -1,17 +1,21 @@
-// OB Scanner server.
-//   Live:     KITE_API_KEY=… KITE_API_SECRET=… node server.mjs
-//             then open http://localhost:8080 and sign in with Zerodha once a day.
-//   Snapshot: node server.mjs --snapshot data/board-2026-11-17.json   (no Kite needed)
-// The board is pushed to the page over Server-Sent Events every minute while
-// the market is open (09:15–15:30 IST, Mon–Fri; exchange holidays are not known to it).
+// ZoneBoard: a public site, sign-in, paid plans, and the live order-block board for members.
+//   Live:     see README for the environment (Kite, Google, Razorpay, SESSION_SECRET).
+//   Snapshot: DEV_LOGIN=1 node server.mjs --snapshot data/board-2026-11-17.json   (no Kite, Google or Razorpay)
+// Members get the live board pushed over Server-Sent Events every minute while the market is
+// open (09:15–15:30 IST, Mon–Fri; exchange holidays are not known to it). Everyone else gets a
+// made-up sample board, so real data never reaches a visitor without a plan.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Kite } from './src/kite.mjs';
+import crypto from 'node:crypto';
 import { scoreStock, rankBoard, dailyStats, zones, oiDrift } from './src/engine.mjs';
+import { Accounts, google, cookie, cookies, randomToken } from './src/accounts.mjs';
+import { Razorpay, plans } from './src/payments.mjs';
+import { sampleBoard } from './src/sample.mjs';
 
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
-const DATA = path.join(ROOT, 'data');
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
 const PORT = +(process.env.PORT || 8080);
 const TOP = 20;          // rows per side on the board
 const ZONED = 10;        // rows per side that get 5-minute candles and zones each minute
@@ -47,11 +51,12 @@ const kite = new Kite(process.env.KITE_API_KEY || '', process.env.KITE_API_SECRE
 const tokenFile = () => path.join(DATA, `token-${ymd()}.json`);
 try { kite.accessToken = JSON.parse(fs.readFileSync(tokenFile(), 'utf8')).access_token; status = 'ready'; } catch { }
 
+/** Board events go to members only; status goes to everyone. */
 function push(event, data) {
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  for (const res of clients) res.write(msg);
+  for (const c of clients) if (event !== 'board' || c.member) c.res.write(msg);
 }
-function setStatus(s, n) { status = s; note = n; push('status', { status, note, market: market() }); }
+function setStatus(s, n) { status = s; note = n; push('status', { status: s === 'signed_out' ? 'waiting' : s, note: '', market: market() }); }
 
 /* ── daily preparation: ATR, average volume, yesterday's futures OI ───
  * About two calls per stock, paced to Kite's limit: a couple of minutes once
@@ -130,7 +135,7 @@ async function loop() {
     if (!universe) await prepare();
     const m = market();
     if (m.state === 'open' || !board) { setStatus('live', m.state === 'open' ? 'Live' : 'Last session'); await scan(); }
-    push('status', { status, note, market: m });
+    push('status', { status, note: '', market: m });
   } catch (e) {
     if (e.status === 403) { kite.accessToken = ''; universe = null; setStatus('signed_out', 'Zerodha session ended. Sign in again'); }
     else setStatus('error', e.message);
@@ -139,36 +144,185 @@ async function loop() {
 setInterval(loop, 60e3);
 loop();
 
-/* ── http ───────────────────────────────────────────────────────────── */
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
+/* ── site configuration ─────────────────────────────────────────────── */
+const SITE = process.env.SITE_NAME || 'ZoneBoard';
+const BASE = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
+const SECURE = BASE.startsWith('https://');
+const DEV_LOGIN = process.env.DEV_LOGIN === '1';
+const ADMIN = (process.env.ADMIN_EMAIL || '').toLowerCase();
+const G = { clientId: process.env.GOOGLE_CLIENT_ID || '', clientSecret: process.env.GOOGLE_CLIENT_SECRET || '', redirectUri: BASE + '/auth/google/callback' };
+const pay = new Razorpay(process.env.RAZORPAY_KEY_ID || '', process.env.RAZORPAY_KEY_SECRET || '');
+const PLANS = plans();
+
+// A missing secret is made once and kept, so sessions survive restarts on a dev machine.
+function sessionSecret() {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  const f = path.join(DATA, 'session-secret');
+  try { return fs.readFileSync(f, 'utf8'); } catch { }
+  const s = crypto.randomBytes(32).toString('hex');
+  fs.writeFileSync(f, s, { mode: 0o600 });
+  return s;
+}
+const accounts = new Accounts({ file: path.join(DATA, 'users.json'), secret: sessionSecret() });
+
+// orders started but not yet paid, so a verified payment maps to the right user and plan
+const ordersFile = path.join(DATA, 'orders.json');
+let orders = {}; try { orders = JSON.parse(fs.readFileSync(ordersFile, 'utf8')); } catch { }
+const saveOrders = () => fs.writeFileSync(ordersFile, JSON.stringify(orders));
+
+const isAdmin = (u) => !!u && !!ADMIN && u.email === ADMIN;
+
+/* ── http helpers ───────────────────────────────────────────────────── */
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp' };
+const SECURITY = {
+  'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.googleusercontent.com; connect-src 'self' https://*.razorpay.com; frame-src https://*.razorpay.com",
+};
+const json = (res, code, body, headers = {}) => res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers }).end(JSON.stringify(body));
+const redirect = (res, to, headers = {}) => res.writeHead(302, { Location: to, ...headers }).end();
+async function body(req) {
+  let s = '';
+  for await (const chunk of req) { s += chunk; if (s.length > 1e5) throw new Error('Too large'); }
+  try { return JSON.parse(s || '{}'); } catch { return {}; }
+}
+/** Double-submit check: a POST must echo the CSRF cookie in a header, which a cross-site form cannot do. */
+const csrfOk = (req) => { const c = cookies(req).zb_csrf; return !!c && req.headers['x-csrf'] === c; };
+const safeNext = (n) => (typeof n === 'string' && /^\/[a-z0-9/_-]*$/i.test(n) ? n : '/app');
+
+/** Pages are plain HTML with {{KEY}} slots filled from here. */
+function page(res, req, name, vars = {}, code = 200) {
+  const csrf = cookies(req).zb_csrf || randomToken();
+  let html = fs.readFileSync(path.join(ROOT, 'public', name), 'utf8');
+  const all = { SITE, YEAR: String(new Date().getFullYear()), ...vars };
+  html = html.replace(/\{\{(\w+)\}\}/g, (_, k) => (all[k] ?? '').toString().replace(/[<>"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])));
+  res.writeHead(code, { 'Content-Type': TYPES['.html'], 'Cache-Control': 'no-store', 'Set-Cookie': cookie('zb_csrf', csrf, { secure: SECURE, httpOnly: false }), ...SECURITY });
+  res.end(html);
+}
+function meOf(u) {
+  return u && { email: u.email, name: u.name, picture: u.picture, member: accounts.isMember(u), paidUntil: u.paidUntil || 0, admin: isAdmin(u) };
+}
+const statusFor = (u) => ({ status: isAdmin(u) ? status : status === 'signed_out' ? 'waiting' : status, note: isAdmin(u) ? note : '', market: market() });
+
+/* ── routes ─────────────────────────────────────────────────────────── */
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/login') {
-    if (!kite.apiKey) { res.writeHead(500).end('Set KITE_API_KEY and KITE_API_SECRET first.'); return; }
-    res.writeHead(302, { Location: kite.loginUrl() }).end(); return;
+  const p = url.pathname, user = accounts.userFrom(req);
+  try {
+    /* public pages */
+    if (p === '/') return page(res, req, 'site/index.html', { PER_DAY: PLANS[1].perDay, YEARLY: PLANS[1].price.toLocaleString('en-IN'), MONTHLY: PLANS[0].price.toLocaleString('en-IN'), CTA: user ? '/app' : '/login' });
+    if (['/terms', '/privacy', '/disclaimer', '/refunds'].includes(p)) return page(res, req, `site${p}.html`);
+    if (p === '/login') {
+      if (user) return redirect(res, safeNext(url.searchParams.get('next')));
+      return page(res, req, 'site/login.html', { NEXT: safeNext(url.searchParams.get('next')), GOOGLE: G.clientId ? '1' : '', DEV: DEV_LOGIN ? '1' : '', ERROR: url.searchParams.get('error') || '' });
+    }
+
+    /* sign-in */
+    if (p === '/auth/google') {
+      if (!G.clientId) return redirect(res, '/login?error=Google+sign-in+is+not+set+up');
+      const state = randomToken();
+      const next = safeNext(url.searchParams.get('next'));
+      return redirect(res, google.authUrl({ ...G, state }), { 'Set-Cookie': cookie('zb_state', `${state}|${next}`, { maxAge: 600, secure: SECURE }) });
+    }
+    if (p === '/auth/google/callback') {
+      const [state, next] = (cookies(req).zb_state || '').split('|');
+      if (!state || state !== url.searchParams.get('state')) return redirect(res, '/login?error=Sign-in+expired.+Try+again');
+      try {
+        const profile = await google.profile({ ...G, code: url.searchParams.get('code') || '' });
+        const u = accounts.upsert(profile);
+        return redirect(res, safeNext(next), { 'Set-Cookie': [accounts.sessionCookie(u.id, SECURE), cookie('zb_state', '', { maxAge: 0 })] });
+      } catch (e) { return redirect(res, '/login?error=' + encodeURIComponent(e.message)); }
+    }
+    if (p === '/auth/dev' && req.method === 'POST') {
+      if (!DEV_LOGIN || !csrfOk(req)) return json(res, 403, { error: 'Not available' });
+      const { email } = await body(req);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '')) return json(res, 400, { error: 'Enter an email address' });
+      const u = accounts.upsert({ email, name: email.split('@')[0] });
+      return json(res, 200, { ok: true }, { 'Set-Cookie': accounts.sessionCookie(u.id, SECURE) });
+    }
+    if (p === '/auth/logout' && req.method === 'POST') {
+      if (!csrfOk(req)) return json(res, 403, { error: 'Refresh the page and try again' });
+      return json(res, 200, { ok: true }, { 'Set-Cookie': cookie('zb_s', '', { maxAge: 0, secure: SECURE }) });
+    }
+
+    /* member area */
+    if (p === '/app' || p === '/checkout') {
+      if (!user) return redirect(res, '/login?next=' + p);
+      return page(res, req, p === '/app' ? 'app.html' : 'site/checkout.html', { LOCKED: accounts.isMember(user) ? '' : '1', ADMIN: isAdmin(user) ? '1' : '', PER_DAY: PLANS[1].perDay });
+    }
+    if (p === '/api/me') {
+      return json(res, 200, { user: meOf(user), plans: PLANS, razorpay: pay.ready ? { keyId: pay.keyId } : null, testPayments: !pay.ready && DEV_LOGIN, site: SITE });
+    }
+    if (p === '/api/board') {
+      const real = accounts.isMember(user);
+      return json(res, 200, { board: real ? board : sampleBoard(), sample: !real, ...statusFor(user) });
+    }
+    if (p === '/api/stream') {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+      res.write(`event: status\ndata: ${JSON.stringify(statusFor(user))}\n\n`);
+      const c = { res, member: accounts.isMember(user) };
+      clients.add(c);
+      const ping = setInterval(() => res.write(': ping\n\n'), 25e3);
+      req.on('close', () => { clearInterval(ping); clients.delete(c); });
+      return;
+    }
+
+    /* payments */
+    if (p.startsWith('/api/checkout') && req.method === 'POST') {
+      if (!user) return json(res, 401, { error: 'Please sign in' });
+      if (!csrfOk(req)) return json(res, 403, { error: 'Refresh the page and try again' });
+      const b = await body(req);
+      if (p === '/api/checkout') {
+        const plan = PLANS.find((x) => x.id === b.plan);
+        if (!plan) return json(res, 400, { error: 'Pick a plan' });
+        if (!pay.ready) return json(res, 503, { error: 'Payments are not set up yet' });
+        const o = await pay.createOrder({ amount: plan.price * 100, receipt: `${user.id}-${Date.now()}`.slice(0, 40), notes: { user: user.id, plan: plan.id } });
+        orders[o.id] = { userId: user.id, plan: plan.id, amount: o.amount, at: Date.now() }; saveOrders();
+        return json(res, 200, { orderId: o.id, amount: o.amount, keyId: pay.keyId, name: SITE, email: user.email, plan: plan.name });
+      }
+      if (p === '/api/checkout/verify') {
+        const o = orders[b.orderId];
+        if (!o || o.userId !== user.id) return json(res, 400, { error: 'This payment does not match your order' });
+        if (!pay.verify(b)) return json(res, 400, { error: 'Payment could not be verified. If money left your account, contact support with the payment ID.' });
+        const plan = PLANS.find((x) => x.id === o.plan);
+        const u = accounts.grant(user.id, plan.days, { orderId: b.orderId, paymentId: b.paymentId, plan: plan.id, amount: o.amount });
+        delete orders[b.orderId]; saveOrders();
+        return json(res, 200, { ok: true, paidUntil: u.paidUntil });
+      }
+      if (p === '/api/checkout/test') {
+        if (pay.ready || !DEV_LOGIN) return json(res, 403, { error: 'Not available' });
+        const plan = PLANS.find((x) => x.id === b.plan) || PLANS[0];
+        const u = accounts.grant(user.id, plan.days, { orderId: 'test', paymentId: 'test-' + Date.now(), plan: plan.id, amount: 0 });
+        return json(res, 200, { ok: true, paidUntil: u.paidUntil, test: true });
+      }
+    }
+
+    /* the operator's daily Zerodha sign-in: admin only */
+    if (p === '/admin/kite') {
+      if (!isAdmin(user)) return redirect(res, '/login?next=/app');
+      if (!kite.apiKey) { res.writeHead(500).end('Set KITE_API_KEY and KITE_API_SECRET first.'); return; }
+      return redirect(res, kite.loginUrl());
+    }
+    if (p === '/callback') {
+      if (!isAdmin(user)) return redirect(res, '/login?next=/app');
+      try {
+        const s = await kite.createSession(url.searchParams.get('request_token') || '');
+        fs.writeFileSync(tokenFile(), JSON.stringify({ access_token: s.access_token }), { mode: 0o600 });
+        setStatus('ready', 'Signed in'); loop();
+        return redirect(res, '/app');
+      } catch (e) { res.writeHead(400).end('Zerodha sign-in failed: ' + e.message); return; }
+    }
+
+    /* static files */
+    if (p.startsWith('/static/')) {
+      const file = path.join(ROOT, 'public', path.normalize(p).replace(/^(\.\.[/\\])+/, ''));
+      if (file.startsWith(path.join(ROOT, 'public', 'static')) && fs.existsSync(file) && fs.statSync(file).isFile()) {
+        res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'public, max-age=3600' });
+        return fs.createReadStream(file).pipe(res);
+      }
+    }
+    page(res, req, 'site/404.html', {}, 404);
+  } catch (e) {
+    console.error(e);
+    if (!res.headersSent) json(res, 500, { error: 'Something went wrong' });
   }
-  if (url.pathname === '/callback') {
-    try {
-      const s = await kite.createSession(url.searchParams.get('request_token') || '');
-      fs.writeFileSync(tokenFile(), JSON.stringify({ access_token: s.access_token }));
-      setStatus('ready', 'Signed in'); loop();
-      res.writeHead(302, { Location: '/' }).end();
-    } catch (e) { res.writeHead(400).end('Sign-in failed: ' + e.message); }
-    return;
-  }
-  if (url.pathname === '/api/board') {
-    res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ board, status, note, market: market() })); return;
-  }
-  if (url.pathname === '/api/stream') {
-    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    res.write(`event: status\ndata: ${JSON.stringify({ status, note, market: market() })}\n\n`);
-    clients.add(res);
-    const ping = setInterval(() => res.write(': ping\n\n'), 25e3);
-    req.on('close', () => { clearInterval(ping); clients.delete(res); });
-    return;
-  }
-  const file = path.join(ROOT, 'public', url.pathname === '/' ? 'index.html' : path.normalize(url.pathname).replace(/^(\.\.[/\\])+/, ''));
-  if (!file.startsWith(path.join(ROOT, 'public')) || !fs.existsSync(file)) { res.writeHead(404).end('Not found'); return; }
-  res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
-  fs.createReadStream(file).pipe(res);
-}).listen(PORT, () => console.log(`OB Scanner on http://localhost:${PORT} (${status})`));
+}).listen(PORT, () => console.log(`${SITE} on ${BASE} (board: ${status}; Google ${G.clientId ? 'on' : 'off'}; Razorpay ${pay.ready ? 'on' : 'off'}${DEV_LOGIN ? '; DEV LOGIN ON' : ''})`));

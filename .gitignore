@@ -4,3 +4,6 @@ data/prep-*.json
 .env
 data/*-live.json
 data/candles-live/
+data/users.json
+data/orders.json
+data/session-secret

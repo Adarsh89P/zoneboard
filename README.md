@@ -1,4 +1,4 @@
-# OB Scanner
+# ZoneBoard
 
 A live board of the strongest bullish and bearish F&O stocks, each with its
 order block, support, resistance and liquidity level, built on Zerodha Kite
@@ -29,6 +29,31 @@ Every minute, 09:15–15:30 IST:
 Once a day after sign-in it reads 45 days of daily candles per stock (ATR,
 average volume) and yesterday's futures OI. That takes a few minutes at Kite's
 rate limits and is cached for the day.
+
+## The website
+
+- `/` landing page, pricing and FAQ; `/terms`, `/privacy`, `/refunds`, `/disclaimer` (drafts: fill in the bracketed details and have a lawyer check them).
+- `/login` Google sign-in. `/checkout` Razorpay payment for a monthly or yearly plan.
+- `/app` the board. Members get the live board; everyone else gets a blurred sample with made-up figures,
+  generated on the server, so no real data reaches a visitor without a plan.
+- `/admin/kite` the daily Zerodha sign-in that feeds the board, for `ADMIN_EMAIL` only.
+
+### Environment
+
+| Variable | What it is |
+| --- | --- |
+| `SITE_NAME` | Brand shown everywhere (default ZoneBoard) |
+| `BASE_URL` | Public address, e.g. `https://zoneboard.in` (sessions are Secure cookies when this is https) |
+| `SESSION_SECRET` | 32+ random characters; keep it secret and stable |
+| `ADMIN_EMAIL` | The Google account allowed to connect Zerodha |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud OAuth client; redirect URI `BASE_URL/auth/google/callback` |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay API keys (test keys first) |
+| `PRICE_MONTHLY`, `PRICE_YEARLY` | Rupees (default 799 and 5999) |
+| `KITE_API_KEY`, `KITE_API_SECRET` | Kite Connect app; redirect URL `BASE_URL/callback` |
+| `DATA_DIR` | Where users, orders and tokens are kept (default `./data`) |
+| `DEV_LOGIN=1` | Email sign-in and free test plans without Google or Razorpay. **Never in production.** |
+
+`npm run demo` runs the whole site locally on a saved board with `DEV_LOGIN` on.
 
 ## Run it
 

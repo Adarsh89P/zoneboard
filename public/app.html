@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OB Scanner</title>
+<title>Board · {{SITE}}</title>
+<meta name="robots" content="noindex">
 <meta name="theme-color" content="#0a0d12">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,6 +23,7 @@
     --ob: rgba(37,99,235,.13); --ob-line: #2563eb; --blue: #2563eb;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
   .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
   button { font: inherit; color: inherit; }
@@ -105,18 +107,39 @@
   .facts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
   .facts b { color: var(--text); font-weight: 600; }
   footer { color: var(--muted); font-size: 12px; line-height: 1.5; max-width: 900px; }
+  .logo { text-decoration: none; color: inherit; }
+  .me { position: relative; }
+  .me-menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 230px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px; box-shadow: 0 20px 50px -20px rgba(0,0,0,.7); display: grid; gap: 2px; z-index: 20; }
+  .me-menu p { margin: 4px 8px 8px; font-size: 12.5px; color: var(--muted); }
+  .me-menu a, .me-menu button { appearance: none; border: 0; background: transparent; text-align: left; padding: 9px 10px; border-radius: 8px; font-size: 14px; color: var(--text); text-decoration: none; cursor: pointer; }
+  .me-menu a:hover, .me-menu button:hover { background: var(--panel-2); }
+
+  /* locked preview: made-up data, every figure and name blurred, one way to unlock */
+  body[data-locked="1"] .num, body[data-locked="1"] .nm, body[data-locked="1"] .d-head h3, body[data-locked="1"] .lv b,
+  body[data-locked="1"] svg.chart text, body[data-locked="1"] .tag { filter: blur(6px); user-select: none; }
+  body[data-locked="1"] .xray .num { filter: none; }
+  .lockbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border-radius: var(--r);
+    background: linear-gradient(90deg, rgba(34,197,94,.12), rgba(96,165,250,.10)); border: 1px solid color-mix(in srgb, var(--bull) 40%, var(--line)); }
+  .lockbar b { font-size: 15px; } .lockbar span { color: var(--muted); font-size: 13.5px; } .lockbar .sp { flex: 1; }
+  .unlock { position: fixed; inset: 0; z-index: 30; background: rgba(5,7,10,.72); display: grid; place-items: center; padding: 16px; }
+  .unlock-card { width: min(400px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px; text-align: center; display: grid; gap: 10px; }
+  .unlock-card h2 { margin: 0; font-size: 22px; } .unlock-card p { margin: 0; color: var(--muted); }
 </style>
 </head>
-<body>
+<body data-locked="{{LOCKED}}" data-admin="{{ADMIN}}">
 <header>
-  <div class="logo"><i></i>OB Scanner</div>
+  <a class="logo" href="/"><i></i>{{SITE}}</a>
   <span class="pill" id="mkt"><span class="dot"></span><span>—</span></span>
   <span class="asof" id="asof"></span>
   <span class="spacer"></span>
-  <a class="btn primary" id="signin" href="/login" hidden>Sign in with Zerodha</a>
+  <a class="btn primary" id="signin" href="/admin/kite" hidden>Connect Zerodha</a>
+  <a class="btn primary" id="upgrade" href="/checkout" hidden>Unlock live board</a>
+  <span class="me"><button class="btn" id="me" type="button" aria-haspopup="true" aria-expanded="false">Account</button></span>
   <button class="btn icon" id="theme" type="button" aria-label="Switch theme"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
 </header>
 <main>
+  <div class="lockbar" id="lockbar" hidden><div><b>You are looking at a sample board.</b><br><span>Figures are made up and blurred. Members see every F&amp;O stock live, every minute.</span></div>
+    <span class="sp"></span><a class="btn primary" href="/checkout">Unlock for ₹{{PER_DAY}} a day</a></div>
   <p class="note" id="note" hidden></p>
   <section class="xray" id="xray" hidden></section>
   <div class="grid">
@@ -148,7 +171,7 @@
     const m = s.market || {}, pill = $('#mkt');
     pill.querySelector('.dot').className = 'dot ' + (m.state === 'open' && s.status === 'live' ? 'live' : m.state === 'pre' ? 'pre' : '');
     pill.lastElementChild.textContent = s.status === 'snapshot' ? 'Saved board' : (m.label || '—');
-    $('#signin').hidden = s.status !== 'signed_out';
+    $('#signin').hidden = !(document.body.dataset.admin && s.status === 'signed_out');
     const showNote = !['live', 'ready', 'snapshot'].includes(s.status) && s.note;
     $('#note').hidden = !showNote; $('#note').textContent = showNote ? s.note : '';
   }
@@ -190,6 +213,7 @@
 
   document.addEventListener('click', (e) => {
     const b = e.target.closest('li button'); if (!b) return;
+    if (document.body.dataset.locked) { unlock(); return; }
     picked = b.dataset.n;
     document.querySelectorAll('li button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     showDetail();
@@ -251,9 +275,38 @@
     function label(yy, text, col) { labels.push({ y: yy, text, col }); return ''; }
   }
 
+  /* locked preview and account menu */
+  const locked = !!document.body.dataset.locked;
+  $('#lockbar').hidden = !locked; $('#upgrade').hidden = !locked;
+  function unlock() {
+    if (document.querySelector('.unlock')) return;
+    const ov = document.createElement('div'); ov.className = 'unlock';
+    ov.innerHTML = `<div class="unlock-card" role="dialog" aria-modal="true" aria-labelledby="ul-t"><h2 id="ul-t">This is for members</h2>
+      <p>Unlock the live board, every zone and every F&amp;O stock, updated every minute.</p>
+      <a class="btn primary" href="/checkout">Unlock full access</a><button class="btn" type="button">Not now</button></div>`;
+    ov.addEventListener('click', (e) => { if (e.target === ov || e.target.tagName === 'BUTTON') ov.remove(); });
+    document.body.append(ov);
+  }
+  const csrf = decodeURIComponent((document.cookie.match(/(?:^|; )zb_csrf=([^;]*)/) || [])[1] || '');
+  fetch('/api/me').then((r) => r.json()).then((me) => {
+    const u = me.user; if (!u) return;
+    const btn = $('#me'); btn.textContent = (u.name || u.email).split(' ')[0];
+    const until = u.paidUntil > Date.now() ? new Date(u.paidUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    btn.addEventListener('click', () => {
+      const open = btn.parentElement.querySelector('.me-menu'); if (open) { open.remove(); btn.setAttribute('aria-expanded', 'false'); return; }
+      const m = document.createElement('div'); m.className = 'me-menu';
+      m.innerHTML = `<p>${esc(u.email)}<br>${until ? 'Member until ' + until : 'No plan yet'}</p><a href="/checkout">${until ? 'Extend plan' : 'Choose a plan'}</a><a href="/">Home</a><button type="button" data-out>Sign out</button>`;
+      m.querySelector('[data-out]').onclick = () => fetch('/auth/logout', { method: 'POST', headers: { 'X-CSRF': csrf } }).then(() => location.assign('/'));
+      btn.parentElement.append(m); btn.setAttribute('aria-expanded', 'true');
+    });
+  });
+
   // Data: a saved board baked into the page, or the live server's board and its stream.
   if (window.SAVED_BOARD) { board = window.SAVED_BOARD; paintStatus({ status: 'snapshot', market: {} }); paint(); return; }
-  fetch('/api/board').then((r) => r.json()).then((d) => { paintStatus(d); board = d.board; paint(); }).catch(() => {});
+  fetch('/api/board').then((r) => r.json()).then((d) => {
+    paintStatus(d); board = d.board; paint();
+    if (!d.board) { $('#note').hidden = false; $('#note').textContent = 'The live feed is not connected yet. The board appears here as soon as it is.'; }
+  }).catch(() => {});
   const es = new EventSource('/api/stream');
   es.addEventListener('board', (e) => { board = JSON.parse(e.data); paint(); });
   es.addEventListener('status', (e) => paintStatus(JSON.parse(e.data)));

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{SITE}}: live order blocks and liquidity for F&amp;O stocks</title>
+<meta name="description" content="Every F&O stock scanned each minute. The strongest bullish and bearish setups ranked on one board, each with its order block, support, resistance and liquidity level.">
+<meta name="theme-color" content="#07090d">
+<meta property="og:title" content="{{SITE}}: the day's strongest F&amp;O stocks, with their zones">
+<meta property="og:description" content="Live order blocks, liquidity and fresh open interest across every F&O stock, ranked every minute.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+<header class="sh"><div class="cx">
+  <a class="logo" href="/"><i></i>{{SITE}}</a>
+  <nav><a href="#features">Features</a><a href="#how">How it works</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
+  <span class="sp"></span>
+  <a class="btn primary" href="{{CTA}}">Open the board</a>
+</div></header>
+
+<main>
+<div class="cx hero">
+  <div>
+    <span class="eyebrow"><span class="dot"></span>Live 09:15–15:30 IST, every trading day</span>
+    <h1>The day's strongest F&amp;O stocks, <em>with the zone that matters.</em></h1>
+    <p class="lede">Every F&amp;O stock is scanned each minute for strength, fresh open interest, order blocks and liquidity.
+      The strongest bullish and bearish setups land on one board, ranked, each with its levels marked.</p>
+    <div class="cta">
+      <a class="btn primary lg" href="{{CTA}}">See today's board</a>
+      <a class="btn lg" href="#how">How it works</a>
+    </div>
+    <div class="ticks"><span>All F&amp;O stocks</span><span>Updated every minute</span><span>Phone, tablet or computer</span></div>
+  </div>
+
+  <div class="demo" aria-label="Example of the board, with made-up figures">
+    <div class="demo-bar"><b>Board</b><span class="num" id="demo-clock">10:42</span><span class="sp"></span><span>Sample figures</span></div>
+    <div class="demo-cols">
+      <div class="demo-col bu"><h4>Bullish</h4><div id="demo-bu"></div></div>
+      <div class="demo-col be"><h4>Bearish</h4><div id="demo-be"></div></div>
+    </div>
+    <div class="demo-zone">
+      <div><span>Resistance</span><b>848.60</b></div>
+      <div class="ob"><span>Order block</span><b>836.2–838.4</b></div>
+      <div><span>Support</span><b>832.90</b></div>
+      <div><span>Liquidity</span><b>829.70</b></div>
+    </div>
+    <p class="demo-note">An illustration with made-up figures. Members see the live board.</p>
+  </div>
+</div>
+
+<section class="s" id="features"><div class="cx">
+  <h2>One board instead of twenty charts.</h2>
+  <p class="sub">At 09:20 the market is moving and every chart looks like a setup. The board narrows it to the stocks
+    that are moving cleanly, with positions building behind the move, and shows where the zone is.</p>
+  <div class="grid3">
+    <div class="card"><span class="ic g">↑</span><h3>Bullish and bearish boards</h3>
+      <p>The strongest twenty each side, scored 0–100 on the size of the move against the stock's usual move, where it
+        holds in the day's range, how cleanly it trends, volume and open interest. Choppy stocks score zero and stay off.</p></div>
+    <div class="card"><span class="ic b">▭</span><h3>Order block and liquidity</h3>
+      <p>For the strongest names: the order block that started the move, the nearest support and resistance, and the
+        liquidity level beyond them where the other side's stops sit. Drawn on a live 5-minute chart.</p></div>
+    <div class="card"><span class="ic a">OI</span><h3>Open interest you can read</h3>
+      <p>Long build-up, short build-up, short covering or long unwinding, from futures OI. Read through expiry rollover,
+        when near-month OI drains everywhere, so a whole market rolling to next month doesn't look like covering.</p></div>
+    <div class="card"><span class="ic r">∙∙</span><h3>Market X-ray</h3>
+      <p>Every F&amp;O stock as a dot at its move, with the bullish, bearish and choppy counts, so you see in a second whether
+        the day favours longs, shorts, or neither.</p></div>
+  </div>
+</div></section>
+
+<section class="s" id="how"><div class="cx">
+  <h2>How it works</h2>
+  <p class="sub">Nothing to install. Open it in a browser on any phone or computer.</p>
+  <div class="steps">
+    <div class="card"><h3>Every minute, every F&amp;O stock</h3><p>Prices, volume and futures open interest are read for the whole F&amp;O list and every stock is scored.</p></div>
+    <div class="card"><h3>The strongest, ranked</h3><p>Stocks that are moving cleanly with positions building behind them rise to the top of their side. The rest stay off the board.</p></div>
+    <div class="card"><h3>One clear zone</h3><p>Each leader gets its order block, support, resistance and liquidity marked on the chart, so the levels are in front of you, not in your head.</p></div>
+  </div>
+</div></section>
+
+<section class="s" id="pricing"><div class="cx">
+  <h2>Simple pricing</h2>
+  <p class="sub">Full access on either plan. Pay with UPI, card or net banking.</p>
+  <div class="plans">
+    <div class="plan"><h3>Monthly</h3><div class="price">₹{{MONTHLY}}<small> / month</small></div><p class="perday">&nbsp;</p>
+      <ul><li>Live bullish and bearish boards</li><li>Order block and liquidity zones</li><li>OI build-up, rollover-aware</li><li>Market X-ray</li></ul>
+      <a class="btn block" href="/checkout">Choose monthly</a></div>
+    <div class="plan best"><span class="tag">Best value</span><h3>Yearly</h3><div class="price">₹{{YEARLY}}<small> / year</small></div><p class="perday">About ₹{{PER_DAY}} a day</p>
+      <ul><li>Everything in monthly</li><li>Twelve months of access</li><li>One payment, no renewals to watch</li><li>The same price all year</li></ul>
+      <a class="btn primary block" href="/checkout">Choose yearly</a></div>
+  </div>
+</div></section>
+
+<section class="s" id="faq"><div class="cx">
+  <h2>Questions</h2>
+  <div class="faq">
+    <details><summary>What exactly does the board show?</summary><p>The day's strongest F&amp;O stocks on each side, updated every minute, each with its score, futures open-interest reading and, for the leaders, the order block, support, resistance and liquidity level on a 5-minute chart.</p></details>
+    <details><summary>Is this a tips service? Will it tell me what to buy?</summary><p>No. {{SITE}} is a market analytics tool. It ranks and marks; it does not recommend buying or selling anything. What you trade, how much, and where you exit is your decision.</p></details>
+    <details><summary>When is the board live?</summary><p>On trading days from 09:15 to 15:30 IST. The ranking settles after the first few minutes, once there is enough price action. On weekends and holidays you see the last session's closing board.</p></details>
+    <details><summary>Does it work on my phone?</summary><p>Yes. It runs in the browser on phones, tablets and computers. Nothing to install.</p></details>
+    <details><summary>How do refunds work?</summary><p>See the <a href="/refunds">refund policy</a>.</p></details>
+  </div>
+</div></section>
+
+<section class="s"><div class="cx">
+  <p class="risk"><b>Risk disclosure.</b> {{SITE}} is a market analytics tool. Nothing on this website or in the app is
+    investment advice or a recommendation to buy or sell any security. Trading in equity derivatives carries a high
+    risk of loss, and most individual traders in F&amp;O lose money. <a href="/disclaimer">Read the disclaimer</a>.</p>
+</div></section>
+</main>
+
+<footer class="sf"><div class="cx">
+  <a class="logo" href="/"><i></i>{{SITE}}</a>
+  <nav><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/disclaimer">Disclaimer</a><a href="/login">Sign in</a></nav>
+  <span>© {{YEAR}} {{SITE}}</span>
+</div></footer>
+
+<script>
+// The hero board ticks like a live one, on made-up rows; the ranking itself never changes.
+(() => {
+  const bu = [['SBIN', 2.84, 92], ['AXISBANK', 2.31, 86], ['TITAN', 2.06, 81], ['LT', 1.71, 74]];
+  const be = [['INFY', -2.47, 90], ['WIPRO', -1.88, 83], ['HCLTECH', -1.64, 77], ['TCS', -1.22, 70]];
+  const paint = (id, rows) => { document.getElementById(id).innerHTML = rows.map(([n, c, s]) =>
+    `<div class="demo-row"><b>${n}</b><em>${c > 0 ? '+' : '−'}${Math.abs(c).toFixed(2)}%</em><u><i style="width:${s}%"></i></u></div>`).join(''); };
+  paint('demo-bu', bu); paint('demo-be', be);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let t = 10 * 60 + 42;
+  setInterval(() => {
+    const side = Math.random() < .5 ? ['demo-bu', bu] : ['demo-be', be];
+    const i = Math.random() * side[1].length | 0, r = side[1][i], d = (Math.random() < .5 ? 1 : -1) * 0.01 * (1 + (Math.random() * 3 | 0));
+    r[1] = Math.round((r[1] + d) * 100) / 100;
+    paint(side[0], side[1]);
+    const el = document.getElementById(side[0]).children[i];
+    el.classList.add((side[0] === 'demo-bu') === (d > 0) ? 'flash-up' : 'flash-dn');
+  }, 900);
+  setInterval(() => { t++; document.getElementById('demo-clock').textContent = (t / 60 | 0) + ':' + String(t % 60).padStart(2, '0'); }, 60000);
+})();
+</script>
+</body>
+</html>

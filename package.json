@@ -1,13 +1,15 @@
 {
-  "name": "ob-scanner",
+  "name": "zoneboard",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Live order-block and liquidity scanner for Indian F&O stocks, on Zerodha Kite Connect",
-  "engines": { "node": ">=20" },
+  "description": "ZoneBoard: live order-block and liquidity board for Indian F&O stocks, with sign-in and paid plans",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.mjs",
-    "demo": "node server.mjs --snapshot data/board-2026-11-17.json",
+    "demo": "DEV_LOGIN=1 node server.mjs --snapshot data/board-2026-11-18.json",
     "test": "node --test test/*.test.mjs"
   }
 }

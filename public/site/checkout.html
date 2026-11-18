@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07090d">
+<meta name="robots" content="noindex">
+<title>Choose a plan · {{SITE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+<header class="sh"><div class="cx"><a class="logo" href="/"><i></i>{{SITE}}</a><span class="sp"></span><a class="btn" href="/app">Open the board</a></div></header>
+<main class="cx" style="padding:56px 0 80px">
+  <h1 style="font-size:36px;margin:0 0 8px">Choose a plan</h1>
+  <p class="muted" id="who">&nbsp;</p>
+  <p class="err" id="err" hidden></p>
+  <p class="ok" id="ok" hidden></p>
+  <div class="plans" id="plans" style="margin-top:24px"></div>
+  <p class="muted" style="font-size:13.5px;margin-top:22px">Payments are handled by Razorpay. {{SITE}} never sees your card or UPI details.
+    By paying you agree to the <a href="/terms">Terms</a> and <a href="/refunds">Refund policy</a>.</p>
+</main>
+<script>
+(async () => {
+  const $ = (s) => document.querySelector(s);
+  const csrf = decodeURIComponent((document.cookie.match(/(?:^|; )zb_csrf=([^;]*)/) || [])[1] || '');
+  const post = (u, b) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': csrf }, body: JSON.stringify(b) }).then(async (r) => ({ ok: r.ok, j: await r.json().catch(() => ({})) }));
+  const say = (id, msg) => { for (const k of ['#err', '#ok']) $(k).hidden = true; if (msg) { $(id).hidden = false; $(id).textContent = msg; } };
+  const me = await fetch('/api/me').then((r) => r.json());
+  const fmt = (n) => n.toLocaleString('en-IN');
+  const until = me.user?.paidUntil > Date.now() ? new Date(me.user.paidUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  $('#who').textContent = `Signed in as ${me.user.email}.` + (until ? ` Your plan runs until ${until}; buying again adds to it.` : '');
+  $('#plans').innerHTML = me.plans.map((p, i) => `<div class="plan ${i ? 'best' : ''}">${i ? '<span class="tag">Best value</span>' : ''}
+    <h3>${p.name}</h3><div class="price">₹${fmt(p.price)}<small> / ${p.days >= 365 ? 'year' : 'month'}</small></div>
+    <p class="perday">About ₹${p.perDay} a day</p>
+    <button class="btn ${i ? 'primary' : ''} block" data-plan="${p.id}" type="button">${me.razorpay ? 'Pay ₹' + fmt(p.price) : me.testPayments ? 'Activate (test, no charge)' : 'Payments not set up'}</button></div>`).join('');
+  if (!me.razorpay && !me.testPayments) document.querySelectorAll('[data-plan]').forEach((b) => (b.disabled = true));
+
+  let rzpLoaded = null;
+  const loadRzp = () => rzpLoaded || (rzpLoaded = new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'https://checkout.razorpay.com/v1/checkout.js'; s.onload = ok; s.onerror = () => no(new Error('Could not load the payment window. Check your connection.')); document.head.append(s); }));
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-plan]'); if (!btn) return;
+    btn.disabled = true; say();
+    try {
+      if (!me.razorpay) {
+        const { ok, j } = await post('/api/checkout/test', { plan: btn.dataset.plan });
+        if (!ok) throw new Error(j.error);
+        say('#ok', 'Test membership active. Opening the board…'); setTimeout(() => location.assign('/app'), 900); return;
+      }
+      const { ok, j } = await post('/api/checkout', { plan: btn.dataset.plan });
+      if (!ok) throw new Error(j.error);
+      await loadRzp();
+      new window.Razorpay({
+        key: j.keyId, order_id: j.orderId, amount: j.amount, currency: 'INR', name: j.name, description: j.plan + ' plan',
+        prefill: { email: j.email }, theme: { color: '#22c55e' },
+        modal: { ondismiss: () => { btn.disabled = false; } },
+        handler: async (r) => {
+          const v = await post('/api/checkout/verify', { orderId: r.razorpay_order_id, paymentId: r.razorpay_payment_id, signature: r.razorpay_signature });
+          if (!v.ok) { say('#err', v.j.error); btn.disabled = false; return; }
+          say('#ok', 'Payment received. Opening the board…'); setTimeout(() => location.assign('/app'), 900);
+        },
+      }).open();
+    } catch (err) { say('#err', err.message || 'Something went wrong'); btn.disabled = false; }
+  });
+})();
+</script>
+</body>
+</html>
