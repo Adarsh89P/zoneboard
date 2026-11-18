@@ -1,0 +1,37 @@
+# Render blueprint: New > Blueprint > pick this repository.
+# Values marked sync: false are asked for when the blueprint is applied.
+services:
+  - type: web
+    name: zoneboard
+    runtime: node
+    plan: starter            # stays awake through market hours; the free plan sleeps when idle
+    buildCommand: npm install --omit=dev
+    startCommand: node server.mjs
+    healthCheckPath: /
+    disk:                    # keeps sign-ins, today's plans and the daily Kite login across restarts
+      name: zoneboard-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SITE_NAME
+        value: ZoneBoard
+      - key: OPEN_ACCESS          # no payments yet: everyone signed in sees the full board
+        value: "1"
+      - key: DATA_DIR
+        value: /var/data
+      - key: BOARD_SNAPSHOT       # shown until KITE_API_KEY is set
+        value: data/board-2026-11-18.json
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SITE_PASSWORD        # the password you sign in with
+        sync: false
+      - key: ADMIN_EMAIL          # your email; the account that may connect Zerodha
+        sync: false
+      - key: BASE_URL             # e.g. https://zoneboard.onrender.com
+        sync: false
+      - key: KITE_API_KEY         # from developers.kite.trade; redirect URL: BASE_URL/callback
+        sync: false
+      - key: KITE_API_SECRET
+        sync: false

@@ -7,3 +7,4 @@ data/candles-live/
 data/users.json
 data/orders.json
 data/session-secret
+data/plans-*.json

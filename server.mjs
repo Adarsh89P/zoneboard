@@ -13,6 +13,7 @@ import { scoreStock, rankBoard, dailyStats, zones, oiDrift } from './src/engine.
 import { Accounts, google, cookie, cookies, randomToken } from './src/accounts.mjs';
 import { Razorpay, plans } from './src/payments.mjs';
 import { sampleBoard } from './src/sample.mjs';
+import { makePlan, advance, pickOption } from './src/plans.mjs';
 
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
@@ -20,7 +21,10 @@ const PORT = +(process.env.PORT || 8080);
 const TOP = 20;          // rows per side on the board
 const ZONED = 10;        // rows per side that get 5-minute candles and zones each minute
 const args = process.argv.slice(2);
-const snapshotFile = args.includes('--snapshot') ? args[args.indexOf('--snapshot') + 1] : null;
+// --snapshot FILE, or BOARD_SNAPSHOT: show a saved board instead of a live one (a deployment
+// without Kite keys yet). Live Kite always wins once KITE_API_KEY is set.
+const snapshotFile = args.includes('--snapshot') ? args[args.indexOf('--snapshot') + 1]
+  : !process.env.KITE_API_KEY && process.env.BOARD_SNAPSHOT ? process.env.BOARD_SNAPSHOT : null;
 
 fs.mkdirSync(DATA, { recursive: true });
 
@@ -61,12 +65,15 @@ function setStatus(s, n) { status = s; note = n; push('status', { status: s === 
 /* ── daily preparation: ATR, average volume, yesterday's futures OI ───
  * About two calls per stock, paced to Kite's limit: a couple of minutes once
  * a day, cached so a restart the same day does not repeat it. */
-let universe = null, daily = null;
+let universe = null, daily = null, chains = null;
+/** NIFTY and BANKNIFTY: their quote, candles and option chain names. */
+const INDICES = [{ name: 'NIFTY', quote: 'NSE:NIFTY 50', token: 256265 }, { name: 'BANKNIFTY', quote: 'NSE:NIFTY BANK', token: 260105 }];
 async function prepare() {
   const file = path.join(DATA, `prep-${ymd()}.json`);
-  try { ({ universe, daily } = JSON.parse(fs.readFileSync(file, 'utf8'))); return; } catch { }
+  try { ({ universe, daily, chains } = JSON.parse(fs.readFileSync(file, 'utf8'))); if (chains) return; } catch { }
   setStatus('preparing', 'Loading the F&O list');
   universe = await kite.fnoUniverse();
+  chains = kite.optionChains([...universe.map((u) => u.name), ...INDICES.map((i) => i.name)]);
   daily = {};
   const today = ymd();
   for (let i = 0; i < universe.length; i++) {
@@ -87,12 +94,39 @@ async function prepare() {
       daily[u.name] = {};
     }
   }
-  fs.writeFileSync(file, JSON.stringify({ universe, daily }));
+  fs.writeFileSync(file, JSON.stringify({ universe, daily, chains }));
 }
+
+/* ── today's plans: one per stock or index per day, kept across restarts ── */
+let planDay = '', tradePlans = new Map();
+function loadPlans() {
+  if (planDay === ymd()) return;
+  planDay = ymd(); tradePlans = new Map();
+  try { for (const p of JSON.parse(fs.readFileSync(path.join(DATA, `plans-${planDay}.json`), 'utf8'))) tradePlans.set(p.name, p); } catch { }
+}
+const savePlans = () => fs.writeFileSync(path.join(DATA, `plans-${planDay}.json`), JSON.stringify([...tradePlans.values()]));
+const open = (p) => p.status === 'waiting' || p.status === 'active';
+const fiveMin = async (token) => {
+  const c = await kite.historical(token, '5minute', daysAgo(5), ymd() + ' 23:59:59');
+  const days = [...new Set(c.map((x) => x.t.slice(0, 10)))].slice(-2);
+  return c.filter((x) => days.includes(x.t.slice(0, 10)));
+};
+/** Makes a plan for a row the first time it has a setup today, and moves every plan on. */
+function track(row, candles) {
+  const todays = candles.filter((x) => x.t.startsWith(ymd()));
+  let p = tradePlans.get(row.name);
+  if (!p && row.dir && todays.length) {
+    p = makePlan(row, candles);
+    if (p) { p.option = pickOption(chains?.[row.name], row.ltp, p.side, ymd()); tradePlans.set(row.name, p); }
+  } else if (p && open(p)) advance(p, todays);
+}
+let backtest = null;
+try { const b = JSON.parse(fs.readFileSync(path.join(DATA, 'backtest.json'), 'utf8')); backtest = { ...b.summary, sessions: new Set(b.trades.map((t) => t.day)).size }; } catch { }
 
 /* ── one scan ───────────────────────────────────────────────────────── */
 async function scan() {
-  const q = await kite.quote(universe.flatMap((u) => ['NSE:' + u.name, 'NFO:' + u.fut, ...(u.fut2 ? ['NFO:' + u.fut2] : [])]));
+  loadPlans();
+  const q = await kite.quote([...INDICES.map((i) => i.quote), ...universe.flatMap((u) => ['NSE:' + u.name, 'NFO:' + u.fut, ...(u.fut2 ? ['NFO:' + u.fut2] : [])])]);
   const oiNow = (u) => (q['NFO:' + u.fut]?.oi || 0) + (u.fut2 ? q['NFO:' + u.fut2]?.oi || 0 : 0) || undefined;
   const drift = oiDrift(universe.map((u) => ({ oi: oiNow(u), prevOi: daily[u.name]?.prevOi })));
   const rows = [];
@@ -108,19 +142,47 @@ async function scan() {
   }
   const ranked = rankBoard(rows, TOP);
   // zones for the strongest few each side: today's and the previous session's 5-minute candles
-  for (const r of [...ranked.bull.slice(0, ZONED), ...ranked.bear.slice(0, ZONED)]) {
+  const zoned = [...ranked.bull.slice(0, ZONED), ...ranked.bear.slice(0, ZONED)];
+  for (const r of zoned) {
     try {
-      const c = await kite.historical(r.token, '5minute', daysAgo(5), ymd() + ' 23:59:59');
-      const days = [...new Set(c.map((x) => x.t.slice(0, 10)))].slice(-2);
-      const recent = c.filter((x) => days.includes(x.t.slice(0, 10)));
+      const recent = await fiveMin(r.token);
       r.zones = zones(recent, r.dir, r.ltp);
       r.candles = recent.slice(-75).map((x) => [x.t, x.o, x.h, x.l, x.c]);
+      track(r, recent);
     } catch { /* the row stays on the board without its chart */ }
   }
+  // plans for stocks that have since dropped off the board still need watching
+  for (const p of tradePlans.values()) {
+    if (!open(p) || zoned.some((r) => r.name === p.name) || INDICES.some((i) => i.name === p.name)) continue;
+    const u = universe.find((x) => x.name === p.name);
+    try { if (u) advance(p, (await fiveMin(u.token)).filter((x) => x.t.startsWith(ymd()))); } catch { }
+  }
+  // NIFTY and BANKNIFTY: a direction only when the index and the market's breadth agree
+  const indices = [];
+  for (const ix of INDICES) {
+    const s = q[ix.quote];
+    if (!s?.ohlc) continue;
+    const chgPct = Math.round(((s.last_price - s.ohlc.close) / s.ohlc.close) * 10000) / 100;
+    const breadth = ranked.counts.bullish - ranked.counts.bearish;
+    const dir = chgPct > 0.15 && breadth > 0 ? 1 : chgPct < -0.15 && breadth < 0 ? -1 : 0;
+    const row = { name: ix.name, ltp: s.last_price, chgPct, dir, bias: dir > 0 ? 'Bullish' : dir < 0 ? 'Bearish' : 'Mixed' };
+    try {
+      const recent = await fiveMin(ix.token);
+      row.zones = dir ? zones(recent, dir, s.last_price) : null;
+      row.candles = recent.slice(-75).map((x) => [x.t, x.o, x.h, x.l, x.c]);
+      track(row, recent);
+    } catch { }
+    indices.push(row);
+  }
+  // the option each live plan names, priced now
+  const opts = [...tradePlans.values()].filter((p) => open(p) && p.option).map((p) => 'NFO:' + p.option.symbol);
+  if (opts.length) { try { const oq = await kite.quote(opts); for (const p of tradePlans.values()) if (p.option && oq['NFO:' + p.option.symbol]) p.option.ltp = oq['NFO:' + p.option.symbol].last_price; } catch { } }
+  savePlans();
   const strip = ({ token, parts, ...r }) => r;
   board = {
     asOf: new Date().toISOString(), market: market(), oiDrift: Math.round(drift * 100) / 100,
     bull: ranked.bull.map(strip), bear: ranked.bear.map(strip), counts: ranked.counts,
+    indices, plans: [...tradePlans.values()], backtest,
     all: rows.map(({ name, chgPct, score, dir }) => ({ name, chgPct, score, dir })),
   };
   fs.writeFileSync(path.join(DATA, `board-${ymd()}.json`), JSON.stringify(board));
@@ -149,6 +211,10 @@ const SITE = process.env.SITE_NAME || 'ZoneBoard';
 const BASE = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const SECURE = BASE.startsWith('https://');
 const DEV_LOGIN = process.env.DEV_LOGIN === '1';
+// No payments yet: every signed-in user gets the full board, and the pricing parts of the site are hidden.
+const OPEN_ACCESS = process.env.OPEN_ACCESS === '1';
+// Sign-in with one shared password, for a private deployment without Google set up.
+const SITE_PASSWORD = process.env.SITE_PASSWORD || '';
 const ADMIN = (process.env.ADMIN_EMAIL || '').toLowerCase();
 const G = { clientId: process.env.GOOGLE_CLIENT_ID || '', clientSecret: process.env.GOOGLE_CLIENT_SECRET || '', redirectUri: BASE + '/auth/google/callback' };
 const pay = new Razorpay(process.env.RAZORPAY_KEY_ID || '', process.env.RAZORPAY_KEY_SECRET || '');
@@ -171,6 +237,14 @@ let orders = {}; try { orders = JSON.parse(fs.readFileSync(ordersFile, 'utf8'));
 const saveOrders = () => fs.writeFileSync(ordersFile, JSON.stringify(orders));
 
 const isAdmin = (u) => !!u && !!ADMIN && u.email === ADMIN;
+const member = (u) => !!u && (OPEN_ACCESS || accounts.isMember(u));
+// a few password tries per address per 10 minutes, so the password cannot be guessed by brute force
+const tries = new Map();
+function tooMany(ip) {
+  const now = Date.now(), t = (tries.get(ip) || []).filter((x) => now - x < 600e3);
+  t.push(now); tries.set(ip, t);
+  return t.length > 8;
+}
 
 /* ── http helpers ───────────────────────────────────────────────────── */
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp' };
@@ -199,7 +273,7 @@ function page(res, req, name, vars = {}, code = 200) {
   res.end(html);
 }
 function meOf(u) {
-  return u && { email: u.email, name: u.name, picture: u.picture, member: accounts.isMember(u), paidUntil: u.paidUntil || 0, admin: isAdmin(u) };
+  return u && { email: u.email, name: u.name, picture: u.picture, member: member(u), paidUntil: u.paidUntil || 0, admin: isAdmin(u) };
 }
 const statusFor = (u) => ({ status: isAdmin(u) ? status : status === 'signed_out' ? 'waiting' : status, note: isAdmin(u) ? note : '', market: market() });
 
@@ -209,11 +283,11 @@ http.createServer(async (req, res) => {
   const p = url.pathname, user = accounts.userFrom(req);
   try {
     /* public pages */
-    if (p === '/') return page(res, req, 'site/index.html', { PER_DAY: PLANS[1].perDay, YEARLY: PLANS[1].price.toLocaleString('en-IN'), MONTHLY: PLANS[0].price.toLocaleString('en-IN'), CTA: user ? '/app' : '/login' });
+    if (p === '/') return page(res, req, 'site/index.html', { PAID: OPEN_ACCESS ? '' : '1', PER_DAY: PLANS[1].perDay, YEARLY: PLANS[1].price.toLocaleString('en-IN'), MONTHLY: PLANS[0].price.toLocaleString('en-IN'), CTA: user ? '/app' : '/login' });
     if (['/terms', '/privacy', '/disclaimer', '/refunds'].includes(p)) return page(res, req, `site${p}.html`);
     if (p === '/login') {
       if (user) return redirect(res, safeNext(url.searchParams.get('next')));
-      return page(res, req, 'site/login.html', { NEXT: safeNext(url.searchParams.get('next')), GOOGLE: G.clientId ? '1' : '', DEV: DEV_LOGIN ? '1' : '', ERROR: url.searchParams.get('error') || '' });
+      return page(res, req, 'site/login.html', { NEXT: safeNext(url.searchParams.get('next')), GOOGLE: G.clientId ? '1' : '', DEV: DEV_LOGIN ? '1' : '', PASSWORD: SITE_PASSWORD ? '1' : '', ERROR: url.searchParams.get('error') || '' });
     }
 
     /* sign-in */
@@ -239,6 +313,16 @@ http.createServer(async (req, res) => {
       const u = accounts.upsert({ email, name: email.split('@')[0] });
       return json(res, 200, { ok: true }, { 'Set-Cookie': accounts.sessionCookie(u.id, SECURE) });
     }
+    if (p === '/auth/password' && req.method === 'POST') {
+      if (!SITE_PASSWORD || !csrfOk(req)) return json(res, 403, { error: 'Not available' });
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      if (tooMany(ip)) return json(res, 429, { error: 'Too many tries. Wait ten minutes.' });
+      const { password } = await body(req);
+      const a = crypto.createHash('sha256').update(String(password || '')).digest(), b = crypto.createHash('sha256').update(SITE_PASSWORD).digest();
+      if (!crypto.timingSafeEqual(a, b)) return json(res, 401, { error: 'Wrong password' });
+      const u = accounts.upsert({ email: ADMIN || 'owner@zoneboard.local', name: 'Owner' });
+      return json(res, 200, { ok: true }, { 'Set-Cookie': accounts.sessionCookie(u.id, SECURE) });
+    }
     if (p === '/auth/logout' && req.method === 'POST') {
       if (!csrfOk(req)) return json(res, 403, { error: 'Refresh the page and try again' });
       return json(res, 200, { ok: true }, { 'Set-Cookie': cookie('zb_s', '', { maxAge: 0, secure: SECURE }) });
@@ -247,19 +331,20 @@ http.createServer(async (req, res) => {
     /* member area */
     if (p === '/app' || p === '/checkout') {
       if (!user) return redirect(res, '/login?next=' + p);
-      return page(res, req, p === '/app' ? 'app.html' : 'site/checkout.html', { LOCKED: accounts.isMember(user) ? '' : '1', ADMIN: isAdmin(user) ? '1' : '', PER_DAY: PLANS[1].perDay });
+      if (p === '/checkout' && OPEN_ACCESS) return redirect(res, '/app');
+      return page(res, req, p === '/app' ? 'app.html' : 'site/checkout.html', { LOCKED: member(user) ? '' : '1', ADMIN: isAdmin(user) ? '1' : '', PER_DAY: PLANS[1].perDay });
     }
     if (p === '/api/me') {
       return json(res, 200, { user: meOf(user), plans: PLANS, razorpay: pay.ready ? { keyId: pay.keyId } : null, testPayments: !pay.ready && DEV_LOGIN, site: SITE });
     }
     if (p === '/api/board') {
-      const real = accounts.isMember(user);
+      const real = member(user);
       return json(res, 200, { board: real ? board : sampleBoard(), sample: !real, ...statusFor(user) });
     }
     if (p === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
       res.write(`event: status\ndata: ${JSON.stringify(statusFor(user))}\n\n`);
-      const c = { res, member: accounts.isMember(user) };
+      const c = { res, member: member(user) };
       clients.add(c);
       const ping = setInterval(() => res.write(': ping\n\n'), 25e3);
       req.on('close', () => { clearInterval(ping); clients.delete(c); });
@@ -267,6 +352,7 @@ http.createServer(async (req, res) => {
     }
 
     /* payments */
+    if (p.startsWith('/api/checkout') && req.method === 'POST' && OPEN_ACCESS) return json(res, 403, { error: 'Not available' });
     if (p.startsWith('/api/checkout') && req.method === 'POST') {
       if (!user) return json(res, 401, { error: 'Please sign in' });
       if (!csrfOk(req)) return json(res, 403, { error: 'Refresh the page and try again' });
@@ -325,4 +411,4 @@ http.createServer(async (req, res) => {
     console.error(e);
     if (!res.headersSent) json(res, 500, { error: 'Something went wrong' });
   }
-}).listen(PORT, () => console.log(`${SITE} on ${BASE} (board: ${status}; Google ${G.clientId ? 'on' : 'off'}; Razorpay ${pay.ready ? 'on' : 'off'}${DEV_LOGIN ? '; DEV LOGIN ON' : ''})`));
+}).listen(PORT, () => console.log(`${SITE} on ${BASE} (board: ${status}; Google ${G.clientId ? 'on' : 'off'}; password ${SITE_PASSWORD ? 'on' : 'off'}; ${OPEN_ACCESS ? 'open access' : 'Razorpay ' + (pay.ready ? 'on' : 'off')}${DEV_LOGIN ? '; DEV LOGIN ON' : ''})`));

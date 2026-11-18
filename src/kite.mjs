@@ -25,6 +25,7 @@ export class Kite {
    *  tokens. Index futures are left out. */
   async fnoUniverse(today = new Date()) {
     const [nfo, nse] = await Promise.all([this.#csv('/instruments/NFO'), this.#csv('/instruments/NSE')]);
+    this.nfo = nfo; // kept for optionChains()
     const cash = new Map(nse.filter((r) => r.segment === 'NSE').map((r) => [r.tradingsymbol, +r.instrument_token]));
     const day = today.toISOString().slice(0, 10), byName = new Map();
     for (const r of nfo) {
@@ -38,6 +39,18 @@ export class Kite {
         ...(next ? { fut2: next.tradingsymbol, fut2_token: +next.instrument_token } : {}),
       };
     });
+  }
+
+  /** Option strikes for the given underlyings, two nearest expiries each:
+   *  { NAME: { 'YYYY-MM-DD': { CE: [{symbol, strike, lot}], PE: [...] } } }. Call after fnoUniverse(). */
+  optionChains(names, today = new Date()) {
+    const want = new Set(names), day = today.toISOString().slice(0, 10), out = {};
+    for (const r of this.nfo || []) {
+      if (r.segment !== 'NFO-OPT' || !want.has(r.name) || r.expiry < day) continue;
+      ((out[r.name] ||= {})[r.expiry] ||= { CE: [], PE: [] })[r.instrument_type]?.push({ symbol: r.tradingsymbol, strike: +r.strike, lot: +r.lot_size });
+    }
+    for (const n in out) for (const e of Object.keys(out[n]).sort().slice(2)) delete out[n][e];
+    return out;
   }
 
   async quote(instruments) {

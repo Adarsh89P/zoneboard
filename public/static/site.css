@@ -5,6 +5,7 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+body:not([data-paid="1"]) .paid-only { display: none !important; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: radial-gradient(900px 500px at 85% -10%, rgba(96,165,250,.10), transparent 60%), radial-gradient(800px 480px at -10% 10%, rgba(34,197,94,.08), transparent 60%), var(--bg);
   color: var(--text); font: 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }

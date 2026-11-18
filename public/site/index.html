@@ -12,10 +12,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/static/site.css">
 </head>
-<body>
+<body data-paid="{{PAID}}">
 <header class="sh"><div class="cx">
   <a class="logo" href="/"><i></i>{{SITE}}</a>
-  <nav><a href="#features">Features</a><a href="#how">How it works</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
+  <nav><a href="#features">Features</a><a href="#how">How it works</a><a class="paid-only" href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
   <span class="sp"></span>
   <a class="btn primary" href="{{CTA}}">Open the board</a>
 </div></header>
@@ -80,7 +80,7 @@
   </div>
 </div></section>
 
-<section class="s" id="pricing"><div class="cx">
+<section class="s paid-only" id="pricing"><div class="cx">
   <h2>Simple pricing</h2>
   <p class="sub">Full access on either plan. Pay with UPI, card or net banking.</p>
   <div class="plans">
@@ -100,7 +100,7 @@
     <details><summary>Is this a tips service? Will it tell me what to buy?</summary><p>No. {{SITE}} is a market analytics tool. It ranks and marks; it does not recommend buying or selling anything. What you trade, how much, and where you exit is your decision.</p></details>
     <details><summary>When is the board live?</summary><p>On trading days from 09:15 to 15:30 IST. The ranking settles after the first few minutes, once there is enough price action. On weekends and holidays you see the last session's closing board.</p></details>
     <details><summary>Does it work on my phone?</summary><p>Yes. It runs in the browser on phones, tablets and computers. Nothing to install.</p></details>
-    <details><summary>How do refunds work?</summary><p>See the <a href="/refunds">refund policy</a>.</p></details>
+    <details class="paid-only"><summary>How do refunds work?</summary><p>See the <a href="/refunds">refund policy</a>.</p></details>
   </div>
 </div></section>
 

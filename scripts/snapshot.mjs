@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { scoreStock, rankBoard, dailyStats, aggregate, zones, oiDrift } from '../src/engine.mjs';
+import { firstPlan } from '../src/plans.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
@@ -37,6 +38,7 @@ for (const u of universe) {
 }
 
 const board = rankBoard(rows);
+const plans = [];
 if (candleDir) {
   for (const r of [...board.bull, ...board.bear]) {
     const raw = tryRead(path.join(candleDir, r.name + '.json'));
@@ -46,10 +48,15 @@ if (candleDir) {
     const c5 = aggregate(all.filter((c) => days.includes(c.t.slice(0, 10))), 5);
     r.zones = zones(c5, r.dir, r.ltp);
     r.candles = c5.slice(-75).map((c) => [c.t, c.o, c.h, c.l, c.c]);
+    // the plan the live board would have made today, run forward to the last candle
+    const prev = c5.filter((c) => c.t.startsWith(days[0])), today = c5.filter((c) => c.t.startsWith(days[1]));
+    const plan = days.length === 2 ? firstPlan(r.name, prev, today) : null;
+    if (plan && plan.dir === r.dir) plans.push(plan);
   }
 }
 
-const out = { asOf: Object.values(quotes)[0]?.timestamp, oiDrift: Math.round(drift * 100) / 100, ...board, all: rows.map(({ name, chgPct, score, dir }) => ({ name, chgPct, score, dir })) };
+const backtest = tryRead(path.join(path.dirname(new URL(import.meta.url).pathname), '../data/backtest.json'));
+const out = { asOf: Object.values(quotes)[0]?.timestamp, oiDrift: Math.round(drift * 100) / 100, plans, backtest: backtest && { ...backtest.summary, sessions: new Set(backtest.trades.map((t) => t.day)).size }, ...board, all: rows.map(({ name, chgPct, score, dir }) => ({ name, chgPct, score, dir })) };
 const file = opt('--out');
 if (file) fs.writeFileSync(file, JSON.stringify(out));
 console.log(`as of ${out.asOf} · market OI drift ${out.oiDrift}% · bullish ${board.counts.bullish} · bearish ${board.counts.bearish} · choppy ${board.counts.choppy}`);

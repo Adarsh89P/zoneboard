@@ -30,6 +30,39 @@ Once a day after sign-in it reads 45 days of daily candles per stock (ATR,
 average volume) and yesterday's futures OI. That takes a few minutes at Kite's
 rate limits and is cached for the day.
 
+## Trade plans
+
+From 09:20 to 14:30, the first time a stock on the board has a setup, it gets one plan for the day:
+
+- **setup** on the bullish board with an unbroken order block below price (bearish: the mirror)
+- **entry** price comes back into the order block: entry at the zone's top (bearish: its bottom)
+- **stop** just past the liquidity level beyond the zone; **target** entry + 2 × risk
+- **option** the at-the-money call (bullish) or put (bearish), nearest expiry unless it is two
+  trading days or less away, then the next one; priced each minute
+- **NIFTY and BANKNIFTY** get a direction only when the index move and market breadth agree, and
+  then a plan by the same rule
+- status runs waiting → in trade → target / stopped, or closed at 15:15, or not triggered
+
+The levels are mechanical. They are not advice, and they are not a forecast.
+
+### Backtest
+
+`node scripts/backtest.mjs --files data/candles data/candles-live --out data/backtest.json` replays the
+same rules candle by candle on saved data; with a Kite token,
+`KITE_API_KEY=… KITE_ACCESS_TOKEN=… node scripts/backtest.mjs --kite --days 60 --out data/backtest.json`
+replays every F&O stock over the last 60 days. The board shows the latest backtest above the plans.
+On the two sessions saved so far (16 stocks) the rules lost: 8 triggered, 1 target, 6 stops,
+average −0.48R. Run the 60-day test before trusting any plan.
+
+## Deploying on Render
+
+1. Push this repository to GitHub.
+2. Render → New → Blueprint → pick the repository. It reads `render.yaml`.
+3. Fill in `SITE_PASSWORD`, `ADMIN_EMAIL`, `BASE_URL` (the `onrender.com` address it gives you).
+   Leave the Kite keys empty to start: the site shows the saved board from 18 Nov.
+4. With a Kite Connect app: set `KITE_API_KEY`, `KITE_API_SECRET`, and in the Kite app the redirect
+   URL `BASE_URL/callback`. Each morning, sign in on the site and press **Connect Zerodha**.
+
 ## The website
 
 - `/` landing page, pricing and FAQ; `/terms`, `/privacy`, `/refunds`, `/disclaimer` (drafts: fill in the bracketed details and have a lawyer check them).
