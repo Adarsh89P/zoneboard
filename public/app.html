@@ -140,6 +140,16 @@
   .st { padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; background: var(--panel-2); color: var(--muted); }
   .st.waiting { color: var(--amber); } .st.active { color: var(--blue); background: rgba(96,165,250,.12); }
   .st.target { color: var(--bull); background: var(--bull-soft); } .st.stop { color: var(--bear); background: var(--bear-soft); }
+  .chip { display: inline-block; margin: 0 4px 0 0; padding: 2px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: rgba(245,158,11,.12); color: var(--amber); }
+  .chip.ev { background: rgba(96,165,250,.12); color: var(--blue); } .chip.ban { background: var(--bear-soft); color: var(--bear); }
+  .pt tr.ctx td { border-bottom: 1px solid var(--line); padding: 0 8px 10px; white-space: normal; font-size: 12.5px; color: var(--muted); }
+  .pt tr.has-ctx td { border-bottom: 0; }
+  .why { color: var(--text); margin: 0 0 3px; } .why i { font-style: normal; color: var(--muted); font-size: 11px; margin-right: 6px; }
+  .hl { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; } .hl a { color: var(--muted); text-decoration: none; } .hl a:hover { color: var(--text); }
+  .mood { background: var(--panel-2); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; font-size: 13.5px; }
+  .mood b { font-weight: 700; }
+  .vars summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+  .vars table { margin-top: 8px; } .vars td.better { color: var(--bull); } .vars td.worse { color: var(--bear); }
   .unlock { position: fixed; inset: 0; z-index: 30; background: rgba(5,7,10,.72); display: grid; place-items: center; padding: 16px; }
   .unlock-card { width: min(400px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px; text-align: center; display: grid; gap: 10px; }
   .unlock-card h2 { margin: 0; font-size: 22px; } .unlock-card p { margin: 0; color: var(--muted); }
@@ -233,7 +243,30 @@
   }
 
   /* NIFTY / BANKNIFTY direction, the backtest record, and today's plans */
-  const ST = { waiting: 'Waiting for entry', active: 'In trade', target: 'Target hit', stop: 'Stopped out', closed: 'Closed 15:15', expired: 'Not triggered' };
+  const FL = { against_index: 'Against NIFTY', vix_up: 'VIX rising', big_gap: 'Big gap', late: 'After 13:00' };
+  const ago = (t) => { const m = Math.round((Date.now() - Date.parse(t)) / 60000); return m < 60 ? m + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : Math.round(m / 1440) + 'd'; };
+  /** Flags, event words, ban, the AI line and headlines for one plan. */
+  const chips = (p) => (p.ban ? '<span class="chip ban">F&amp;O ban</span>' : '') + (p.flags || []).map((f) => `<span class="chip">${FL[f] || esc(f)}</span>`).join('') + (p.tags || []).map((e) => `<span class="chip ev">${esc(e)}</span>`).join('');
+  const ctxRow = (p, cols) => (p.why || p.news?.length) ? `<tr class="ctx"><td colspan="${cols}">${p.why ? `<p class="why"><i>AI</i>${esc(p.why)}</p>` : ''}${p.news?.length ? `<ul class="hl">${p.news.map((n) => `<li>${safeLink(n)} <span class="num">· ${esc(n.source || '')} ${ago(n.at)}</span></li>`).join('')}</ul>` : ''}</td></tr>` : '';
+  const safeLink = (n) => /^https:\/\//.test(n.link || '') ? `<a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">${esc(n.title)}</a>` : esc(n.title);
+  function variantsTable(bt) {
+    if (!bt?.variants?.length) return '';
+    const base = bt.variants[0].avgR;
+    const cell = (x) => x.avgR == null ? '<td class="num">—</td>' : `<td class="num ${base != null && x.key !== 'all' ? (x.avgR > base ? 'better' : x.avgR < base ? 'worse' : '') : ''}">${x.avgR > 0 ? '+' : ''}${x.avgR}R</td>`;
+    const tr = (x) => `<tr><td>${esc(x.label)}</td><td class="num">${x.plans}</td><td class="num">${x.triggered}</td><td class="num">${x.winRate ?? '—'}${x.winRate != null ? '%' : ''}</td>${cell(x)}<td class="num">${x.totalR > 0 ? '+' : ''}${x.totalR}R</td></tr>`;
+    return `<details class="vars"><summary>Which market filters would have helped? (backtest, same trades with flagged plans left out)</summary>
+      <div class="ptwrap"><table class="pt"><thead><tr><th>Variant</th><th>Plans</th><th>Triggered</th><th>Win rate</th><th>Avg</th><th>Total</th></tr></thead>
+      <tbody>${bt.variants.map(tr).join('')}<tr><td colspan="6" class="muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">By time the plan was made</td></tr>${(bt.byTime || []).map((x) => tr({ ...x, key: 't' })).join('')}</tbody></table></div>
+      <p class="muted" style="font-size:12.5px;margin:6px 0 0">Green: better average than every plan. A filter only helps if it stays green across a long run; with few sessions it is noise. To skip flagged plans on the live board, set PLAN_FILTERS on the server.</p></details>`;
+  }
+  function moodCard() {
+    const m = board.mood, v = board.vix;
+    if (!m?.text && !m?.headlines?.length && !v) return '';
+    return `<div class="mood">${v ? `<span>India VIX <b class="num">${fmt(v.ltp)}</b> <span class="num" style="color:${v.chgPct > 0 ? 'var(--bear)' : 'var(--bull)'}">${pct(v.chgPct)}</span>${v.chgPct > 5 ? ' · fear rising, expect wider swings' : ''}</span>` : ''}
+      ${m?.text ? `<p class="why" style="margin:0"><i>AI</i>${esc(m.text)}</p>` : ''}
+      ${m?.headlines?.length ? `<ul class="hl">${m.headlines.map((n) => `<li>${safeLink(n)} <span class="num">· ${esc(n.source || '')} ${ago(n.at)}</span></li>`).join('')}</ul>` : ''}</div>`;
+  }
+  const ST = { skipped: 'Skipped (filter)', waiting: 'Waiting for entry', active: 'In trade', target: 'Target hit', stop: 'Stopped out', closed: 'Closed 15:15', expired: 'Not triggered' };
   const tm = (t) => t ? t.slice(11, 16) : '—';
   const rOf = (p) => p.status === 'target' ? 2 : p.status === 'stop' ? -1 : p.status === 'closed' && p.exit != null ? ((p.exit - p.entry) * p.dir) / Math.abs(p.entry - p.stop) : null;
   function paintPlans() {
@@ -253,18 +286,19 @@
       const p = plans.find((q) => q.name === x.name);
       return `<div><span class="nm2">${esc(x.name)} <span class="num">${fmt(x.ltp)}</span> <span class="num" style="color:${x.chgPct >= 0 ? 'var(--bull)' : 'var(--bear)'}">${pct(x.chgPct)}</span></span>
         <span class="bias ${x.dir > 0 ? 'bu' : x.dir < 0 ? 'be' : 'mx'}">${esc(x.bias)}${x.dir ? '' : ': index and market breadth disagree, no plan'}</span>
-        ${p ? `<span class="muted" style="font-size:12.5px">${p.side === 'CALL' ? 'Buy call' : 'Buy put'} ${p.option ? esc(p.option.symbol) : ''} · entry <b class="num">${fmt(p.entry)}</b> · ${ST[p.status]}</span>` : ''}</div>`;
+        ${p ? `<span class="muted" style="font-size:12.5px">${p.side === 'CALL' ? 'Buy call' : 'Buy put'} ${p.option ? esc(p.option.symbol) : ''} · entry <b class="num">${fmt(p.entry)}</b> · ${ST[p.status]}</span><span>${chips(p)}</span>${p.why ? `<span class="why" style="font-size:12.5px"><i>AI</i>${esc(p.why)}</span>` : ''}` : ''}</div>`;
     }).join('')}</div>` : '';
     const rows = plans.filter((p) => !ix.some((x) => x.name === p.name)).map((p) => {
       const r = rOf(p), o = p.option;
-      return `<tr data-n="${esc(p.name)}"><td class="num">${tm(p.createdAt)}</td><td><b class="nm">${esc(p.name)}</b></td>
+      const cx = ctxRow(p, 8);
+      return `<tr data-n="${esc(p.name)}"${cx ? ' class="has-ctx"' : ''}><td class="num">${tm(p.createdAt)}</td><td><b class="nm">${esc(p.name)}</b> ${chips(p)}</td>
         <td><span class="side ${p.side === 'CALL' ? 'c' : 'p'}">${p.side === 'CALL' ? 'Buy call' : 'Buy put'}</span></td>
         <td class="num">${o ? esc(o.symbol) + (o.ltp != null ? ' @ ' + fmt(o.ltp) : '') + (o.lot ? ' · lot ' + o.lot : '') : '—'}</td>
         <td class="num">${fmt(p.entry)}</td><td class="num">${fmt(p.stop)}</td><td class="num">${fmt(p.target)}</td>
-        <td><span class="st ${p.status}">${ST[p.status] || p.status}</span>${r != null ? ` <span class="num">${r > 0 ? '+' : ''}${r.toFixed(2)}R</span>` : ''}</td></tr>`;
+        <td><span class="st ${p.status}">${ST[p.status] || p.status}</span>${r != null ? ` <span class="num">${r > 0 ? '+' : ''}${r.toFixed(2)}R</span>` : ''}</td></tr>${cx}`;
     }).join('');
     el.innerHTML = `<h2>${replayed ? 'Last session, replayed' : "Today's plans"} <small>${replayed ? 'The plans the board would have made in the last session, run through to the close. ' : ''}Levels on the stock; the option is the at-the-money contract. Stop is checked before target. Open plans close at 15:15.</small></h2>
-      ${btLine}${btRun}${ixCards}
+      ${moodCard()}${btLine}${variantsTable(bt)}${btRun}${ixCards}
       ${rows ? `<div class="ptwrap"><table class="pt"><thead><tr><th>Made</th><th>Stock</th><th>Plan</th><th>Option</th><th>Entry</th><th>Stop</th><th>Target</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`
         : '<p class="muted" style="margin:0;font-size:13.5px">No plans yet. They form from 09:20, once a stock on the board has an order block to wait for.</p>'}`;
   }

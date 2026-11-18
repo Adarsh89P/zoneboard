@@ -27,6 +27,9 @@ export class Kite {
     const [nfo, nse] = await Promise.all([this.#csv('/instruments/NFO'), this.#csv('/instruments/NSE')]);
     this.nfo = nfo; // kept for optionChains()
     const cash = new Map(nse.filter((r) => r.segment === 'NSE').map((r) => [r.tradingsymbol, +r.instrument_token]));
+    const company = new Map(nse.filter((r) => r.segment === 'NSE').map((r) => [r.tradingsymbol, r.name]));
+    // India VIX for the market filters: its token from the list, not hard-coded
+    this.vixToken = +(nse.find((r) => r.tradingsymbol === 'INDIA VIX')?.instrument_token || 264969);
     const day = today.toISOString().slice(0, 10), byName = new Map();
     for (const r of nfo) {
       if (r.segment !== 'NFO-FUT' || r.expiry < day || !cash.has(r.name)) continue;
@@ -35,7 +38,7 @@ export class Kite {
     return [...byName.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, list]) => {
       const [near, next] = list.sort((a, b) => a.expiry.localeCompare(b.expiry));
       return {
-        name, fut: near.tradingsymbol, fut_token: +near.instrument_token, lot: +near.lot_size, token: cash.get(name),
+        name, fut: near.tradingsymbol, fut_token: +near.instrument_token, lot: +near.lot_size, token: cash.get(name), company: company.get(name) || undefined,
         ...(next ? { fut2: next.tradingsymbol, fut2_token: +next.instrument_token } : {}),
       };
     });

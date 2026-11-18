@@ -108,7 +108,7 @@ test('Kite client: login checksum, F&O universe and quotes', async () => {
   const sent = new URLSearchParams(String(calls[0].init.body));
   assert.equal(sent.get('checksum').length, 64);
   const uni = await k.fnoUniverse(new Date('2026-11-17T06:00:00Z'));
-  assert.deepEqual(uni, [{ name: 'SBIN', fut: 'SBIN26NOVFUT', fut_token: 1, lot: 750, token: 779521, fut2: 'SBIN26DECFUT', fut2_token: 2 }]);
+  assert.deepEqual(uni, [{ name: 'SBIN', fut: 'SBIN26NOVFUT', fut_token: 1, lot: 750, token: 779521, company: 'STATE BANK OF INDIA', fut2: 'SBIN26DECFUT', fut2_token: 2 }]);
   const q = await k.quote(['NSE:SBIN']);
   assert.equal(q['NSE:SBIN'].last_price, 1108.6);
   assert.match(calls.at(-1).init.headers.Authorization, /^token key:tok$/);

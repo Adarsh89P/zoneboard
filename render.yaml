@@ -36,3 +36,10 @@ services:
         sync: false
       - key: KITE_API_SECRET
         sync: false
+      # optional: one-line AI news summaries next to plans (Claude). Leave empty to turn them off.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # optional: market flags that set a plan aside, e.g. "late,against_index". Empty = flag only.
+      # Only set this once the 60-day backtest shows the filter helps.
+      - key: PLAN_FILTERS
+        value: ""

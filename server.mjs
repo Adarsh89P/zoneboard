@@ -15,6 +15,8 @@ import { Razorpay, plans } from './src/payments.mjs';
 import { sampleBoard } from './src/sample.mjs';
 import { makePlan, advance, pickOption, firstPlan, finish, minuteOf } from './src/plans.mjs';
 import { replayStock, summarise } from './scripts/backtest.mjs';
+import { planContext, seriesAt, skipList, variants } from './src/filters.mjs';
+import { news, marketNews, banList, eventTags, aiWhy, aiMood, aiEnabled } from './src/context.mjs';
 
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
@@ -68,6 +70,7 @@ function setStatus(s, n) { status = s; note = n; push('status', { status: s === 
  * a day, cached so a restart the same day does not repeat it. */
 let universe = null, daily = null, chains = null;
 /** NIFTY and BANKNIFTY: their quote, candles and option chain names. */
+const VIX = 'NSE:INDIA VIX';
 const INDICES = [{ name: 'NIFTY', quote: 'NSE:NIFTY 50', token: 256265 }, { name: 'BANKNIFTY', quote: 'NSE:NIFTY BANK', token: 260105 }];
 async function prepare() {
   const file = path.join(DATA, `prep-${ymd()}.json`);
@@ -112,6 +115,15 @@ const fiveMin = async (token) => {
   const days = [...new Set(c.map((x) => x.t.slice(0, 10)))].slice(-2);
   return c.filter((x) => days.includes(x.t.slice(0, 10)));
 };
+// Flags named in PLAN_FILTERS make a plan "skipped" instead of live (default: none, flag only)
+const SKIP = skipList(process.env.PLAN_FILTERS);
+let mkt = {}; // NIFTY and VIX lookups for this scan, from seriesAt()
+/** The market flags at the moment the plan was made; a plan with a flag PLAN_FILTERS skips is set aside. */
+function flag(p, candles) {
+  Object.assign(p, planContext(p, { ...mkt, gapPct: flagGap(candles, p.createdAt.slice(0, 10)) }));
+  if (p.flags.some((f) => SKIP.includes(f)) && p.status === 'waiting') { p.status = 'skipped'; p.events.push({ t: p.createdAt, s: 'skipped' }); }
+  return p;
+}
 /** Makes a plan for a row the first time it has a setup today, and moves every plan on. */
 function track(row, candles) {
   // the latest session in the candles: today while trading, the last trading day after hours
@@ -125,6 +137,7 @@ function track(row, candles) {
     p = firstPlan(row.name, prev, todays);
     if (p && p.dir === row.dir) {
       finish(p, todays.at(-1)); p.replayed = true;
+      Object.assign(p, planContext(p, { ...mkt, gapPct: flagGap(candles, day) }));
       p.option = pickOption(chains?.[row.name], row.ltp, p.side, day);
       tradePlans.set(row.name, p);
     }
@@ -132,11 +145,13 @@ function track(row, candles) {
   }
   if (!p && row.dir && todays.length) {
     p = makePlan(row, candles);
+    if (p) flag(p, candles);
     if (p) { p.option = pickOption(chains?.[row.name], row.ltp, p.side, ymd()); tradePlans.set(row.name, p); }
   } else if (p && open(p)) advance(p, todays);
 }
+const flagGap = (candles, day) => { const prev = candles.filter((x) => x.t < day).at(-1), first = candles.find((x) => x.t.startsWith(day)); return prev && first ? Math.round(((first.o - prev.c) / prev.c) * 10000) / 100 : null; };
 let backtest = null;
-try { const b = JSON.parse(fs.readFileSync(path.join(DATA, 'backtest.json'), 'utf8')); backtest = { ...b.summary, sessions: new Set(b.trades.map((t) => t.day)).size }; } catch { }
+try { const b = JSON.parse(fs.readFileSync(path.join(DATA, 'backtest.json'), 'utf8')); backtest = { ...b.summary, sessions: new Set(b.trades.map((t) => t.day)).size, variants: b.variants, byTime: b.byTime, ranAt: b.ranAt }; } catch { }
 
 /* ── 60-day backtest on Kite history, started from the board by the admin ── */
 const bt = { running: false, done: 0, total: 0, error: '' };
@@ -146,15 +161,18 @@ async function runBacktest(days = 60) {
   try {
     if (!universe) await prepare();
     bt.total = universe.length;
-    const from = daysAgo(Math.ceil(days * 1.45)), trades = [];
+    const from = daysAgo(Math.ceil(days * 1.45)), trades = [], market = {};
+    // the index and VIX over the same days, for the market filters
+    try { market.nifty = seriesAt(await kite.historical(INDICES[0].token, '5minute', from, daysAgo(1))); } catch (e) { if (e.status === 403) throw e; }
+    try { market.vix = seriesAt(await kite.historical(kite.vixToken || 264969, '5minute', from, daysAgo(1))); } catch (e) { if (e.status === 403) throw e; }
     for (const u of universe) {
-      try { trades.push(...replayStock(u.name, await kite.historical(u.token, '5minute', from, daysAgo(1)))); } catch (e) { if (e.status === 403) throw e; }
+      try { trades.push(...replayStock(u.name, await kite.historical(u.token, '5minute', from, daysAgo(1)), market)); } catch (e) { if (e.status === 403) throw e; }
       bt.done++;
       if (bt.done % 10 === 0) push('backtest', { ...bt });
     }
-    const summary = summarise(trades);
-    fs.writeFileSync(path.join(DATA, 'backtest.json'), JSON.stringify({ summary, trades, ranAt: new Date().toISOString(), days }));
-    backtest = { ...summary, sessions: new Set(trades.map((t) => t.day)).size, stocks: universe.length, ranAt: new Date().toISOString() };
+    const summary = summarise(trades), v = variants(trades, summarise), ranAt = new Date().toISOString();
+    fs.writeFileSync(path.join(DATA, 'backtest.json'), JSON.stringify({ summary, ...v, trades, ranAt, days }));
+    backtest = { ...summary, ...v, sessions: new Set(trades.map((t) => t.day)).size, stocks: universe.length, ranAt };
     if (board) { board.backtest = backtest; push('board', board); }
   } catch (e) { bt.error = e.message; }
   finally { bt.running = false; push('backtest', { ...bt }); }
@@ -163,7 +181,11 @@ async function runBacktest(days = 60) {
 /* ── one scan ───────────────────────────────────────────────────────── */
 async function scan() {
   loadPlans();
-  const q = await kite.quote([...INDICES.map((i) => i.quote), ...universe.flatMap((u) => ['NSE:' + u.name, 'NFO:' + u.fut, ...(u.fut2 ? ['NFO:' + u.fut2] : [])])]);
+  // NIFTY and VIX through the session so far, for each plan's market flags
+  mkt = {};
+  try { mkt.nifty = seriesAt(await fiveMin(INDICES[0].token)); } catch { }
+  try { mkt.vix = seriesAt(await fiveMin(kite.vixToken || 264969)); } catch { }
+  const q = await kite.quote([VIX, ...INDICES.map((i) => i.quote), ...universe.flatMap((u) => ['NSE:' + u.name, 'NFO:' + u.fut, ...(u.fut2 ? ['NFO:' + u.fut2] : [])])]);
   const oiNow = (u) => (q['NFO:' + u.fut]?.oi || 0) + (u.fut2 ? q['NFO:' + u.fut2]?.oi || 0 : 0) || undefined;
   const drift = oiDrift(universe.map((u) => ({ oi: oiNow(u), prevOi: daily[u.name]?.prevOi })));
   const rows = [];
@@ -216,14 +238,47 @@ async function scan() {
   if (opts.length) { try { const oq = await kite.quote(opts); for (const p of tradePlans.values()) if (p.option && oq['NFO:' + p.option.symbol]) p.option.ltp = oq['NFO:' + p.option.symbol].last_price; } catch { } }
   savePlans();
   const strip = ({ token, parts, ...r }) => r;
+  const vq = q[VIX], vixChg = vq?.ohlc?.close ? Math.round(((vq.last_price - vq.ohlc.close) / vq.ohlc.close) * 10000) / 100 : null;
   board = {
     asOf: new Date().toISOString(), market: market(), oiDrift: Math.round(drift * 100) / 100,
+    vix: vq ? { ltp: vq.last_price, chgPct: vixChg } : null, mood: lastMood, ai: aiEnabled(), filters: SKIP,
     bull: ranked.bull.map(strip), bear: ranked.bear.map(strip), counts: ranked.counts,
     indices, plans: [...tradePlans.values()], backtest,
     all: rows.map(({ name, chgPct, score, dir }) => ({ name, chgPct, score, dir })),
   };
   fs.writeFileSync(path.join(DATA, `board-${ymd()}.json`), JSON.stringify(board));
   push('board', board);
+  enrich().catch(() => {});
+}
+
+/* ── news and events next to the plans, filled in after the board is out ──
+ * Headlines, the F&O ban list and event words; and with ANTHROPIC_API_KEY, a one-line
+ * AI summary per plan and for the market. All cached, so most scans fetch nothing. */
+let enriching = false, lastMood = null;
+async function enrich() {
+  if (enriching || !board) return;
+  enriching = true;
+  try {
+    const ban = new Set((await banList()) || []);
+    const rowOf = (name) => [...board.bull, ...board.bear].find((r) => r.name === name);
+    for (const p of board.plans) {
+      const u = universe?.find((x) => x.name === p.name), row = rowOf(p.name) || { name: p.name, dir: p.dir, chgPct: null };
+      const isIndex = INDICES.some((i) => i.name === p.name);
+      const items = (await news(p.name, isIndex ? (p.name === 'NIFTY' ? 'Nifty 50' : 'Bank Nifty') : u?.company)) || [];
+      p.news = items.slice(0, 3);
+      p.tags = eventTags(items);
+      p.ban = ban.has(p.name);
+      if (row.chgPct != null || isIndex) p.why = await aiWhy({ ...row, company: u?.company, chgPct: row.chgPct ?? board.indices.find((i) => i.name === p.name)?.chgPct }, items).catch(() => null);
+    }
+    const ix = Object.fromEntries(board.indices.map((i) => [i.name.toLowerCase(), i.chgPct]));
+    lastMood = { headlines: ((await marketNews()) || []).slice(0, 4), text: null };
+    lastMood.text = await aiMood({ ...ix, vix: board.vix?.chgPct, ...board.counts }, lastMood.headlines).catch(() => null);
+    board.mood = lastMood;
+    // keep what was found on the stored plans too, so it survives the next scan
+    for (const p of board.plans) { const t = tradePlans.get(p.name); if (t && t !== p) Object.assign(t, { news: p.news, tags: p.tags, ban: p.ban, why: p.why }); }
+    savePlans();
+    push('board', board);
+  } finally { enriching = false; }
 }
 
 let running = false;

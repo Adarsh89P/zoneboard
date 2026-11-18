@@ -11,5 +11,8 @@
     "start": "node server.mjs",
     "demo": "DEV_LOGIN=1 node server.mjs --snapshot data/board-2026-11-18.json",
     "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.10.0"
   }
 }

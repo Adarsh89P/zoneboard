@@ -10,6 +10,7 @@ import path from 'node:path';
 import { aggregate } from '../src/engine.mjs';
 import { firstPlan, finish, resultR, minuteOf } from '../src/plans.mjs';
 import { Kite } from '../src/kite.mjs';
+import { planContext, variants, seriesAt } from '../src/filters.mjs';
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -19,15 +20,20 @@ const filesArg = () => { const out = []; for (let i = args.indexOf('--files') + 
 
 const sessions = (c) => [...new Set(c.map((x) => x.t.slice(0, 10)))];
 
-/** One stock: every finished session that has a session before it. */
-export function replayStock(name, oneMinute) {
+/** One stock: every finished session that has a session before it.
+ *  market: { nifty, vix } lookups from seriesAt(), for the market filters (optional). */
+export function replayStock(name, oneMinute, market = {}) {
   const c5 = aggregate(oneMinute, 5), days = sessions(c5), trades = [];
   for (let d = 1; d < days.length; d++) {
     const prev = c5.filter((x) => x.t.startsWith(days[d - 1])), today = c5.filter((x) => x.t.startsWith(days[d]));
     // only finished sessions: a day still trading would count open plans as nothing
     if (!prev.length || today.length < 10 || minuteOf(today.at(-1).t) < 15 * 60) continue;
     const plan = firstPlan(name, prev, today, {}, BOARD_SCORE);
-    if (plan) { finish(plan, today.at(-1)); trades.push({ day: days[d], ...plan, r: resultR(plan) }); }
+    if (plan) {
+      finish(plan, today.at(-1));
+      const gapPct = Math.round(((today[0].o - prev.at(-1).c) / prev.at(-1).c) * 10000) / 100;
+      trades.push({ day: days[d], ...plan, ...planContext(plan, { ...market, gapPct }), r: resultR(plan) });
+    }
   }
   return trades;
 }
@@ -64,6 +70,9 @@ async function fromKite(days) {
   const uni = await k.fnoUniverse(), out = new Map();
   const to = new Date(), from = new Date(Date.now() - days * 1.45 * 864e5);
   const ymd = (d) => d.toISOString().slice(0, 10);
+  for (const [key, token] of [['NIFTY', 256265], ['INDIA VIX', k.vixToken]]) {
+    try { market[key === 'NIFTY' ? 'nifty' : 'vix'] = seriesAt(await k.historical(token, '5minute', ymd(from), ymd(to))); } catch { }
+  }
   for (const [i, u] of uni.entries()) {
     process.stderr.write(`\r${i + 1}/${uni.length} ${u.name}        `);
     // Kite serves at most 60 days of 1-minute candles per call; 5-minute is enough here
@@ -73,14 +82,20 @@ async function fromKite(days) {
   return out;
 }
 
+const market = {};
 if (import.meta.url === `file://${process.argv[1]}`) {
   const data = args.includes('--kite') ? await fromKite(+opt('--days', 60))
     : await fromFiles(filesArg());
-  const trades = [...data].flatMap(([name, c]) => replayStock(name, c));
-  const s = summarise(trades);
+  // saved index candles, when the files hold them (NIFTY.json, INDIA VIX.json)
+  if (data.has('NIFTY')) market.nifty ||= seriesAt(data.get('NIFTY'));
+  if (data.has('INDIA VIX')) market.vix ||= seriesAt(data.get('INDIA VIX'));
+  data.delete('NIFTY'); data.delete('INDIA VIX');
+  const trades = [...data].flatMap(([name, c]) => replayStock(name, c, market));
+  const s = summarise(trades), v = variants(trades, summarise);
   const days = [...new Set(trades.map((t) => t.day))].length;
   console.log(`stocks ${data.size} · sessions with a plan ${days} · plans ${s.plans}`);
   console.log(JSON.stringify(s, null, 2));
+  for (const x of [...v.variants, ...v.byTime]) console.log(`${x.label.padEnd(26)} plans ${String(x.plans).padStart(4)}  triggered ${String(x.triggered).padStart(4)}  win ${x.winRate ?? '–'}%  avg ${x.avgR ?? '–'}R  total ${x.totalR}R`);
   for (const t of trades) console.log(`${t.day} ${t.name.padEnd(11)} ${t.side.padEnd(4)} entry ${t.entry} stop ${t.stop} target ${t.target} (${t.createdAt.slice(11, 16)}) → ${t.status}${t.r != null ? ' ' + t.r + 'R' : ''}`);
-  if (opt('--out')) fs.writeFileSync(opt('--out'), JSON.stringify({ summary: s, trades }, null, 2));
+  if (opt('--out')) fs.writeFileSync(opt('--out'), JSON.stringify({ summary: s, ...v, trades }, null, 2));
 }
