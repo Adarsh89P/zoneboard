@@ -32,6 +32,8 @@ export function oiBuildup(priceChg, oiChg) {
  * @param {number} [s.avgVolume] 20-day average volume
  * @param {number} [s.oi]       futures open interest now
  * @param {number} [s.prevOi]   futures open interest at yesterday's close
+ * @param {number} [s.oiDrift]  the market-wide OI change (%), from oiDrift(); taken off this stock's
+ *                              so a rollover week, when near-month OI drains everywhere, isn't read as covering
  */
 export function scoreStock(s) {
   const chgPct = ((s.ltp - s.prevClose) / s.prevClose) * 100;
@@ -46,7 +48,8 @@ export function scoreStock(s) {
   const hold = dir > 0 ? pos : 1 - pos;
   const trend = clamp(Math.abs(s.ltp - s.open) / range);
 
-  const oiChgPct = s.oi > 0 && s.prevOi > 0 ? ((s.oi - s.prevOi) / s.prevOi) * 100 : null;
+  const oiRawPct = s.oi > 0 && s.prevOi > 0 ? ((s.oi - s.prevOi) / s.prevOi) * 100 : null;
+  const oiChgPct = oiRawPct == null ? null : oiRawPct - (s.oiDrift || 0);
   const buildup = oiBuildup(chgPct, oiChgPct);
   // fresh positions in the move's direction count fully; covering/unwinding half; unknown is neutral
   const oiScore = buildup === 'unknown' ? 0.5
@@ -64,10 +67,16 @@ export function scoreStock(s) {
   return {
     chgPct: round(chgPct, 2), dir, score, choppy,
     parts: { move: round(move, 2), hold: round(hold, 2), trend: round(trend, 2), oi: round(oiScore, 2), vol: round(volScore, 2) },
-    oiChgPct: oiChgPct == null ? null : round(oiChgPct, 2), buildup,
+    oiChgPct: oiChgPct == null ? null : round(oiChgPct, 2), oiRawPct: oiRawPct == null ? null : round(oiRawPct, 2), buildup,
     relVol: relVol == null ? null : round(relVol, 2),
     atrPct: atrPct == null ? null : round(atrPct, 2),
   };
+}
+
+/** Median futures OI change (%) across the market: the drift every stock shares that day. */
+export function oiDrift(pairs) {
+  const ch = pairs.filter((p) => p.oi > 0 && p.prevOi > 0).map((p) => ((p.oi - p.prevOi) / p.prevOi) * 100).sort((a, b) => a - b);
+  return ch.length >= 20 ? ch[Math.floor(ch.length / 2)] : 0;
 }
 
 /** Bullish and bearish boards, strongest first. */

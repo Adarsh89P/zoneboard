@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { oiBuildup, scoreStock, rankBoard, dailyStats, aggregate, findOrderBlock, zones } from '../src/engine.mjs';
+import { oiBuildup, oiDrift, scoreStock, rankBoard, dailyStats, aggregate, findOrderBlock, zones } from '../src/engine.mjs';
 import { Kite } from '../src/kite.mjs';
 
 test('OI build-up follows price and OI together', () => {
@@ -19,6 +19,15 @@ test('a clean trend day scores; a stock that gave its move back is choppy', () =
   const faded = scoreStock({ ltp: 100.8, prevClose: 100, open: 101, high: 104, low: 100.5 });
   assert.equal(faded.score, 0);
   assert.ok(faded.choppy);
+});
+
+test('a market-wide OI drain (rollover) is taken out before reading build-up', () => {
+  const pairs = Array.from({ length: 40 }, (_, i) => ({ oi: 95 + (i % 3), prevOi: 100 })); // everyone about -4%
+  const drift = oiDrift(pairs);
+  assert.ok(drift < -3 && drift > -6, `drift ${drift}`);
+  const s = scoreStock({ ltp: 98, prevClose: 100, open: 100, high: 100.1, low: 97.9, oi: 99, prevOi: 100, oiDrift: drift });
+  assert.equal(s.oiRawPct, -1);
+  assert.equal(s.buildup, 'short_buildup'); // fell 1% while the market drained ~4%: fresh shorts
 });
 
 test('boards keep sides apart and sort strongest first', () => {
@@ -99,7 +108,7 @@ test('Kite client: login checksum, F&O universe and quotes', async () => {
   const sent = new URLSearchParams(String(calls[0].init.body));
   assert.equal(sent.get('checksum').length, 64);
   const uni = await k.fnoUniverse(new Date('2026-11-17T06:00:00Z'));
-  assert.deepEqual(uni, [{ name: 'SBIN', fut: 'SBIN26NOVFUT', fut_token: 1, lot: 750, token: 779521 }]);
+  assert.deepEqual(uni, [{ name: 'SBIN', fut: 'SBIN26NOVFUT', fut_token: 1, lot: 750, token: 779521, fut2: 'SBIN26DECFUT', fut2_token: 2 }]);
   const q = await k.quote(['NSE:SBIN']);
   assert.equal(q['NSE:SBIN'].last_price, 1108.6);
   assert.match(calls.at(-1).init.headers.Authorization, /^token key:tok$/);

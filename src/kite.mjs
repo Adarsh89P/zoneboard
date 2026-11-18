@@ -21,19 +21,23 @@ export class Kite {
     return r;
   }
 
-  /** Nearest-expiry stock futures with their cash-market tokens. Index futures are left out. */
+  /** Stock futures (nearest expiry, and the next one for rollover weeks) with their cash-market
+   *  tokens. Index futures are left out. */
   async fnoUniverse(today = new Date()) {
     const [nfo, nse] = await Promise.all([this.#csv('/instruments/NFO'), this.#csv('/instruments/NSE')]);
     const cash = new Map(nse.filter((r) => r.segment === 'NSE').map((r) => [r.tradingsymbol, +r.instrument_token]));
-    const day = today.toISOString().slice(0, 10), best = new Map();
+    const day = today.toISOString().slice(0, 10), byName = new Map();
     for (const r of nfo) {
       if (r.segment !== 'NFO-FUT' || r.expiry < day || !cash.has(r.name)) continue;
-      const cur = best.get(r.name);
-      if (!cur || r.expiry < cur.expiry) best.set(r.name, r);
+      (byName.get(r.name) || byName.set(r.name, []).get(r.name)).push(r);
     }
-    return [...best.values()].sort((a, b) => a.name.localeCompare(b.name)).map((r) => ({
-      name: r.name, fut: r.tradingsymbol, fut_token: +r.instrument_token, lot: +r.lot_size, token: cash.get(r.name),
-    }));
+    return [...byName.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, list]) => {
+      const [near, next] = list.sort((a, b) => a.expiry.localeCompare(b.expiry));
+      return {
+        name, fut: near.tradingsymbol, fut_token: +near.instrument_token, lot: +near.lot_size, token: cash.get(name),
+        ...(next ? { fut2: next.tradingsymbol, fut2_token: +next.instrument_token } : {}),
+      };
+    });
   }
 
   async quote(instruments) {

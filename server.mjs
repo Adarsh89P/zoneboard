@@ -8,7 +8,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Kite } from './src/kite.mjs';
-import { scoreStock, rankBoard, dailyStats, zones } from './src/engine.mjs';
+import { scoreStock, rankBoard, dailyStats, zones, oiDrift } from './src/engine.mjs';
 
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
 const DATA = path.join(ROOT, 'data');
@@ -35,6 +35,10 @@ function market(now = new Date()) {
 
 /* ── state ──────────────────────────────────────────────────────────── */
 let board = snapshotFile ? JSON.parse(fs.readFileSync(snapshotFile, 'utf8')) : null;
+// A saved board that is rewritten (by scripts/snapshot.mjs) is pushed to open pages at once.
+if (snapshotFile) fs.watchFile(snapshotFile, { interval: 1000 }, () => {
+  try { board = JSON.parse(fs.readFileSync(snapshotFile, 'utf8')); push('board', board); } catch { /* mid-write; the next change catches it */ }
+});
 let status = snapshotFile ? 'snapshot' : 'signed_out';
 let note = snapshotFile ? `Saved board from ${path.basename(snapshotFile)}` : 'Sign in with Zerodha to start';
 const clients = new Set();
@@ -65,8 +69,14 @@ async function prepare() {
     setStatus('preparing', `Reading history ${i + 1} of ${universe.length}: ${u.name}`);
     try {
       const days = (await kite.historical(u.token, 'day', daysAgo(45), daysAgo(1))).filter((c) => c.t.slice(0, 10) < today);
-      const fut = (await kite.historical(u.fut_token, 'day', daysAgo(7), daysAgo(1), true)).filter((c) => c.t.slice(0, 10) < today);
-      daily[u.name] = { ...dailyStats(days.map((c) => [c.t, c.o, c.h, c.l, c.c, c.v])), prevOi: fut.at(-1)?.oi };
+      // OI is summed over this month's and next month's future, so positions rolled forward
+      // in expiry week still count as open
+      let prevOi = 0;
+      for (const t of [u.fut_token, u.fut2_token].filter(Boolean)) {
+        const fut = (await kite.historical(t, 'day', daysAgo(7), daysAgo(1), true)).filter((c) => c.t.slice(0, 10) < today);
+        prevOi += fut.at(-1)?.oi || 0;
+      }
+      daily[u.name] = { ...dailyStats(days.map((c) => [c.t, c.o, c.h, c.l, c.c, c.v])), prevOi: prevOi || undefined };
     } catch (e) {
       if (e.status === 403) throw e; // session gone: stop and ask for sign-in
       daily[u.name] = {};
@@ -77,16 +87,18 @@ async function prepare() {
 
 /* ── one scan ───────────────────────────────────────────────────────── */
 async function scan() {
-  const q = await kite.quote(universe.flatMap((u) => ['NSE:' + u.name, 'NFO:' + u.fut]));
+  const q = await kite.quote(universe.flatMap((u) => ['NSE:' + u.name, 'NFO:' + u.fut, ...(u.fut2 ? ['NFO:' + u.fut2] : [])]));
+  const oiNow = (u) => (q['NFO:' + u.fut]?.oi || 0) + (u.fut2 ? q['NFO:' + u.fut2]?.oi || 0 : 0) || undefined;
+  const drift = oiDrift(universe.map((u) => ({ oi: oiNow(u), prevOi: daily[u.name]?.prevOi })));
   const rows = [];
   for (const u of universe) {
-    const s = q['NSE:' + u.name], f = q['NFO:' + u.fut];
+    const s = q['NSE:' + u.name];
     if (!s?.ohlc) continue;
     const d = daily[u.name] || {};
     rows.push({
       name: u.name, ltp: s.last_price, token: u.token,
       ...scoreStock({ ltp: s.last_price, prevClose: s.ohlc.close, open: s.ohlc.open, high: s.ohlc.high, low: s.ohlc.low,
-        volume: s.volume, avgVolume: d.avgVolume, atrPct: d.atrPct, oi: f?.oi, prevOi: d.prevOi }),
+        volume: s.volume, avgVolume: d.avgVolume, atrPct: d.atrPct, oi: oiNow(u), prevOi: d.prevOi, oiDrift: drift }),
     });
   }
   const ranked = rankBoard(rows, TOP);
@@ -102,7 +114,7 @@ async function scan() {
   }
   const strip = ({ token, parts, ...r }) => r;
   board = {
-    asOf: new Date().toISOString(), market: market(),
+    asOf: new Date().toISOString(), market: market(), oiDrift: Math.round(drift * 100) / 100,
     bull: ranked.bull.map(strip), bear: ranked.bear.map(strip), counts: ranked.counts,
     all: rows.map(({ name, chgPct, score, dir }) => ({ name, chgPct, score, dir })),
   };

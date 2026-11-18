@@ -5,7 +5,7 @@
 // prev-oi.json: { "SBIN": 74081250 }. daily-dir / candles-dir: <NAME>.json holding Kite candles.
 import fs from 'node:fs';
 import path from 'node:path';
-import { scoreStock, rankBoard, dailyStats, aggregate, zones } from '../src/engine.mjs';
+import { scoreStock, rankBoard, dailyStats, aggregate, zones, oiDrift } from '../src/engine.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
@@ -22,6 +22,7 @@ const asCandles = (raw) => (raw?.data?.candles ?? raw?.data ?? raw ?? []).map((c
   ? { t: c[0], o: c[1], h: c[2], l: c[3], c: c[4], v: c[5] }
   : { t: c.date, o: c.open, h: c.high, l: c.low, c: c.close, v: c.volume });
 
+const drift = oiDrift(universe.map((u) => ({ oi: quotes['NFO:' + u.fut]?.oi, prevOi: prevOi[u.name] })));
 const rows = [];
 for (const u of universe) {
   const q = quotes['NSE:' + u.name], f = quotes['NFO:' + u.fut];
@@ -30,7 +31,7 @@ for (const u of universe) {
   const stats = daily ? dailyStats(asCandles(daily).map((c) => [c.t, c.o, c.h, c.l, c.c, c.v])) : {};
   const s = scoreStock({
     ltp: q.last_price, prevClose: q.ohlc.close, open: q.ohlc.open, high: q.ohlc.high, low: q.ohlc.low,
-    volume: q.volume, oi: f?.oi, prevOi: prevOi[u.name], ...stats,
+    volume: q.volume, oi: f?.oi, prevOi: prevOi[u.name], oiDrift: drift, ...stats,
   });
   rows.push({ name: u.name, ltp: q.last_price, ...s });
 }
@@ -40,16 +41,18 @@ if (candleDir) {
   for (const r of [...board.bull, ...board.bear]) {
     const raw = tryRead(path.join(candleDir, r.name + '.json'));
     if (!raw) continue;
-    const c5 = aggregate(asCandles(raw), 5);
+    // the last two sessions, as the live server reads them
+    const all = asCandles(raw), days = [...new Set(all.map((c) => c.t.slice(0, 10)))].slice(-2);
+    const c5 = aggregate(all.filter((c) => days.includes(c.t.slice(0, 10))), 5);
     r.zones = zones(c5, r.dir, r.ltp);
     r.candles = c5.slice(-75).map((c) => [c.t, c.o, c.h, c.l, c.c]);
   }
 }
 
-const out = { asOf: Object.values(quotes)[0]?.timestamp, ...board, all: rows.map(({ name, chgPct, score, dir }) => ({ name, chgPct, score, dir })) };
+const out = { asOf: Object.values(quotes)[0]?.timestamp, oiDrift: Math.round(drift * 100) / 100, ...board, all: rows.map(({ name, chgPct, score, dir }) => ({ name, chgPct, score, dir })) };
 const file = opt('--out');
 if (file) fs.writeFileSync(file, JSON.stringify(out));
-console.log(`as of ${out.asOf} · bullish ${board.counts.bullish} · bearish ${board.counts.bearish} · choppy ${board.counts.choppy}`);
+console.log(`as of ${out.asOf} · market OI drift ${out.oiDrift}% · bullish ${board.counts.bullish} · bearish ${board.counts.bearish} · choppy ${board.counts.choppy}`);
 for (const [label, list] of [['BULLISH', board.bull], ['BEARISH', board.bear]]) {
   console.log('\n' + label);
   list.slice(0, 10).forEach((r, i) => console.log(
