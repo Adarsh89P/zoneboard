@@ -2,7 +2,7 @@
 // Paced to Kite's limits (quote 1/s, historical 3/s) so a full scan never trips 429.
 import crypto from 'node:crypto';
 
-const API = 'https://api.kite.trade';
+const API = process.env.KITE_API_URL || 'https://api.kite.trade'; // overridable for tests
 
 export class Kite {
   constructor(apiKey, apiSecret, accessToken = '') {

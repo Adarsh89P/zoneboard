@@ -63,7 +63,20 @@ function push(event, data) {
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const c of clients) if (event !== 'board' || c.member) c.res.write(msg);
 }
-function setStatus(s, n) { status = s; note = n; push('status', { status: s === 'signed_out' ? 'waiting' : s, note: '', market: market() }); }
+function setStatus(s, n) {
+  status = s; note = n;
+  for (const c of clients) c.res.write(`event: status\ndata: ${JSON.stringify(statusFor(c.user))}\n\n`);
+}
+/** Kite answers 403 both for an ended session (TokenException) and for an app without
+ *  market-data access (PermissionException). Only the first means "sign in again". */
+const sessionGone = (e) => e.status === 403 && e.kiteType !== 'PermissionException';
+const NO_DATA = 'Kite refused market data: this Kite Connect app has no market-data access. On developers.kite.trade, '
+  + 'the app needs the paid Connect plan (live quotes and historical candles), not the free Personal plan. Then press Connect Zerodha again.';
+function kiteFailed(e) {
+  if (e.kiteType === 'PermissionException') setStatus('error', NO_DATA);
+  else if (sessionGone(e)) { kite.accessToken = ''; setStatus('signed_out', 'Zerodha session ended. Sign in again'); }
+  else setStatus('error', 'Kite: ' + e.message);
+}
 
 /* ── daily preparation: ATR, average volume, yesterday's futures OI ───
  * About two calls per stock, paced to Kite's limit: a couple of minutes once
@@ -72,17 +85,29 @@ let universe = null, daily = null, chains = null;
 /** NIFTY and BANKNIFTY: their quote, candles and option chain names. */
 const VIX = 'NSE:INDIA VIX';
 const INDICES = [{ name: 'NIFTY', quote: 'NSE:NIFTY 50', token: 256265 }, { name: 'BANKNIFTY', quote: 'NSE:NIFTY BANK', token: 260105 }];
+let dailyDone = false, filling = false;
 async function prepare() {
   const file = path.join(DATA, `prep-${ymd()}.json`);
-  try { ({ universe, daily, chains } = JSON.parse(fs.readFileSync(file, 'utf8'))); if (chains) return; } catch { }
-  setStatus('preparing', 'Loading the F&O list');
-  universe = await kite.fnoUniverse();
-  chains = kite.optionChains([...universe.map((u) => u.name), ...INDICES.map((i) => i.name)]);
-  daily = {};
+  try { let vt; ({ universe, daily, chains, dailyDone, vixToken: vt } = JSON.parse(fs.readFileSync(file, "utf8"))); if (vt) kite.vixToken = vt; } catch { universe = null; }
+  if (!universe || !chains) {
+    setStatus('preparing', 'Loading the F&O list from Kite');
+    universe = await kite.fnoUniverse();
+    chains = kite.optionChains([...universe.map((u) => u.name), ...INDICES.map((i) => i.name)]);
+    daily = {}; dailyDone = false;
+    fs.writeFileSync(file, JSON.stringify({ universe, daily, chains, dailyDone, vixToken: kite.vixToken }));
+  }
+  // The board goes out on prices alone straight away; ATR, average volume and yesterday's OI
+  // fill in behind it over a few minutes and sharpen the scores as they arrive.
+  if (!dailyDone && !filling) fillDaily(file).catch(kiteFailed);
+}
+async function fillDaily(file) {
+  filling = true;
   const today = ymd();
+  try {
   for (let i = 0; i < universe.length; i++) {
     const u = universe[i];
-    setStatus('preparing', `Reading history ${i + 1} of ${universe.length}: ${u.name}`);
+    if (daily[u.name]?.atrPct != null) continue;
+    note = `Reading history ${i + 1} of ${universe.length} (${u.name}); scores sharpen as it fills in`;
     try {
       const days = (await kite.historical(u.token, 'day', daysAgo(45), daysAgo(1))).filter((c) => c.t.slice(0, 10) < today);
       // OI is summed over this month's and next month's future, so positions rolled forward
@@ -94,11 +119,14 @@ async function prepare() {
       }
       daily[u.name] = { ...dailyStats(days.map((c) => [c.t, c.o, c.h, c.l, c.c, c.v])), prevOi: prevOi || undefined };
     } catch (e) {
-      if (e.status === 403) throw e; // session gone: stop and ask for sign-in
+      if (e.status === 403) throw e; // session gone or no data access: stop and say so
       daily[u.name] = {};
     }
+    if (i % 25 === 24) fs.writeFileSync(file, JSON.stringify({ universe, daily, chains, dailyDone, vixToken: kite.vixToken }));
   }
-  fs.writeFileSync(file, JSON.stringify({ universe, daily, chains }));
+  dailyDone = true; note = '';
+  fs.writeFileSync(file, JSON.stringify({ universe, daily, chains, dailyDone, vixToken: kite.vixToken }));
+  } finally { filling = false; }
 }
 
 /* ── today's plans: one per stock or index per day, kept across restarts ── */
@@ -200,6 +228,14 @@ async function scan() {
     });
   }
   const ranked = rankBoard(rows, TOP);
+  // the ranked lists go out at once; charts, zones and plans follow when their candles are in
+  const strip0 = ({ token, parts, ...r }) => r;
+  if (!board || board.asOf?.slice(0, 10) !== new Date().toISOString().slice(0, 10)) {
+    board = { ...(board || {}), asOf: new Date().toISOString(), market: market(), oiDrift: Math.round(drift * 100) / 100,
+      bull: ranked.bull.map(strip0), bear: ranked.bear.map(strip0), counts: ranked.counts, indices: board?.indices || [], plans: [...tradePlans.values()], backtest,
+      all: rows.map(({ name, chgPct, score, dir }) => ({ name, chgPct, score, dir })) };
+    push('board', board);
+  }
   // zones for the strongest few each side: today's and the previous session's 5-minute candles
   const zoned = [...ranked.bull.slice(0, ZONED), ...ranked.bear.slice(0, ZONED)];
   for (const r of zoned) {
@@ -286,17 +322,15 @@ async function loop() {
   if (running || snapshotFile || !kite.accessToken) return;
   running = true;
   try {
-    if (!universe) await prepare();
+    if (!universe || !dailyDone) await prepare();
+    if (!kite.accessToken || !universe) return; // the history load found the session gone
     const m = market();
     if (m.state === 'open' || !board) { setStatus('live', m.state === 'open' ? 'Live' : 'Last session'); await scan(); }
     push('status', { status, note: '', market: m });
-  } catch (e) {
-    if (e.status === 403) { kite.accessToken = ''; universe = null; setStatus('signed_out', 'Zerodha session ended. Sign in again'); }
-    else setStatus('error', e.message);
-  } finally { running = false; }
+  } catch (e) { kiteFailed(e); } finally { running = false; }
 }
 setInterval(loop, 60e3);
-loop();
+setTimeout(loop, 0); // after the whole module has loaded (setStatus uses helpers defined below)
 
 /* ── site configuration ─────────────────────────────────────────────── */
 const SITE = process.env.SITE_NAME || 'ZoneBoard';
@@ -442,7 +476,7 @@ http.createServer(async (req, res) => {
     if (p === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
       res.write(`event: status\ndata: ${JSON.stringify(statusFor(user))}\n\n`);
-      const c = { res, member: member(user) };
+      const c = { res, user, member: member(user) };
       clients.add(c);
       const ping = setInterval(() => res.write(': ping\n\n'), 25e3);
       req.on('close', () => { clearInterval(ping); clients.delete(c); });
