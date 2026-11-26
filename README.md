@@ -118,3 +118,16 @@ Without Kite, `npm run demo` serves a saved board from 17 Nov 2026.
 - Order blocks and liquidity follow one common definition; other traders draw them differently.
 - Kite market data is for your own use. Showing it to paying users needs a data
   licence from the exchange; check before selling access.
+
+## Run it on your own Windows computer (free)
+
+1. Install **Node.js LTS** (version 22 or newer) from https://nodejs.org/en/download.
+2. Download this repository: on GitHub, **Code → Download ZIP**, then unzip it (for example to `C:\ZoneBoard`).
+3. On developers.kite.trade, set your Connect app's **Redirect URL** to `http://127.0.0.1:8080/callback`.
+4. Double-click **start-zoneboard.bat**. The first time it opens `zoneboard.env` in Notepad:
+   fill in `KITE_API_KEY`, `KITE_API_SECRET` and a `SITE_PASSWORD`, save, close Notepad.
+5. Double-click **start-zoneboard.bat** again. It installs what it needs once, starts ZoneBoard and opens
+   http://127.0.0.1:8080 in your browser. Sign in with your password, then press **Connect Zerodha**.
+
+Keep the black window open while you use the board; closing it stops ZoneBoard. Zerodha signs you out
+every morning, so press Connect Zerodha once each trading day. `zoneboard.env` holds your keys: don't share it.

@@ -79,7 +79,7 @@ test('firstPlan replays the board: the first candle with a score and a setup', (
 test('open access with a password: no paywall, no pricing, password sign-in', async () => {
   const PORT = 30000 + Math.floor(Math.random() * 20000), BASE = `http://127.0.0.1:${PORT}`;
   const DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'zb-'));
-  const srv = spawn(process.execPath, ['server.mjs', '--snapshot', 'data/board-live.json'], {
+  const srv = spawn(process.execPath, ['server.mjs', '--snapshot', 'data/board-2026-11-18.json'], {
     cwd: path.join(path.dirname(new URL(import.meta.url).pathname), '..'),
     env: { ...process.env, PORT: String(PORT), DATA_DIR, OPEN_ACCESS: '1', SITE_PASSWORD: 'correct horse', SESSION_SECRET: 'y'.repeat(40), ADMIN_EMAIL: 'owner@example.com' }, stdio: 'pipe',
   });
