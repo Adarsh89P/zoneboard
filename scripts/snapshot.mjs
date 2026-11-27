@@ -3,6 +3,7 @@
 //   node scripts/snapshot.mjs <quotes.json> [--prev-oi prev-oi.json] [--daily daily-dir] [--candles candles-dir] [--out board.json]
 // quotes.json: { "NSE:SBIN": {...}, "NFO:SBIN26NOVFUT": {...} } as Kite's /quote returns it.
 // prev-oi.json: { "SBIN": 74081250 }. daily-dir / candles-dir: <NAME>.json holding Kite candles.
+import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import path from 'node:path';
 import { scoreStock, rankBoard, dailyStats, aggregate, zones, oiDrift } from '../src/engine.mjs';
@@ -14,7 +15,7 @@ const read = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const tryRead = (p) => { try { return read(p); } catch { return undefined; } };
 
 const quotes = read(args[0]);
-const universe = read(path.join(path.dirname(new URL(import.meta.url).pathname), '../data/universe.json'));
+const universe = read(path.join(path.dirname(fileURLToPath(import.meta.url)), '../data/universe.json'));
 const prevOi = opt('--prev-oi') ? read(opt('--prev-oi')) : {};
 const dailyDir = opt('--daily'), candleDir = opt('--candles');
 
@@ -55,7 +56,7 @@ if (candleDir) {
   }
 }
 
-const backtest = tryRead(path.join(path.dirname(new URL(import.meta.url).pathname), '../data/backtest.json'));
+const backtest = tryRead(path.join(path.dirname(fileURLToPath(import.meta.url)), '../data/backtest.json'));
 const out = { asOf: Object.values(quotes)[0]?.timestamp, oiDrift: Math.round(drift * 100) / 100, plans, backtest: backtest && { ...backtest.summary, sessions: new Set(backtest.trades.map((t) => t.day)).size }, ...board, all: rows.map(({ name, chgPct, score, dir }) => ({ name, chgPct, score, dir })) };
 const file = opt('--out');
 if (file) fs.writeFileSync(file, JSON.stringify(out));

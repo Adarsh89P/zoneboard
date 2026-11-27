@@ -5,6 +5,7 @@
 // Per stock and session: from 09:20 the stock is scored as the scanner scores it (price only:
 // past OI and volume averages are not replayed). The first moment it would sit on a board
 // with a plan, the plan is made; it then runs to target, stop or the 15:15 close.
+import { pathToFileURL } from 'node:url';
 import fs from 'node:fs';
 import path from 'node:path';
 import { aggregate } from '../src/engine.mjs';
@@ -83,7 +84,7 @@ async function fromKite(days) {
 }
 
 const market = {};
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const data = args.includes('--kite') ? await fromKite(+opt('--days', 60))
     : await fromFiles(filesArg());
   // saved index candles, when the files hold them (NIFTY.json, INDIA VIX.json)

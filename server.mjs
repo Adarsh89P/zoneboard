@@ -4,6 +4,7 @@
 // Members get the live board pushed over Server-Sent Events every minute while the market is
 // open (09:15–15:30 IST, Mon–Fri; exchange holidays are not known to it). Everyone else gets a
 // made-up sample board, so real data never reaches a visitor without a plan.
+import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,7 +19,7 @@ import { replayStock, summarise } from './scripts/backtest.mjs';
 import { planContext, seriesAt, skipList, variants } from './src/filters.mjs';
 import { news, marketNews, banList, eventTags, aiWhy, aiMood, aiEnabled } from './src/context.mjs';
 
-const ROOT = path.dirname(new URL(import.meta.url).pathname);
+const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
 const PORT = +(process.env.PORT || 8080);
 const TOP = 20;          // rows per side on the board

@@ -1,4 +1,5 @@
 // The website end to end: a real server on a spare port, in snapshot mode with test sign-in.
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -8,7 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { Razorpay } from '../src/payments.mjs';
 
-const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 20000 + Math.floor(Math.random() * 20000);
 const BASE = `http://127.0.0.1:${PORT}`;
 const DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'zb-'));
