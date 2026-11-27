@@ -8,6 +8,9 @@ export class Kite {
   constructor(apiKey, apiSecret, accessToken = '') {
     this.apiKey = apiKey; this.apiSecret = apiSecret; this.accessToken = accessToken;
     this.lanes = { quote: { gap: 1100, next: 0 }, hist: { gap: 360, next: 0 } };
+    this.broker = 'Zerodha';
+    this.indexTokens = { NIFTY: 256265, BANKNIFTY: 260105 };
+    this.vixToken = 264969;
   }
 
   loginUrl() { return `https://kite.zerodha.com/connect/login?v=3&api_key=${encodeURIComponent(this.apiKey)}`; }

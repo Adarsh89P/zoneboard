@@ -9,6 +9,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Kite } from './src/kite.mjs';
+import { Upstox } from './src/upstox.mjs';
 import crypto from 'node:crypto';
 import { scoreStock, rankBoard, dailyStats, zones, oiDrift } from './src/engine.mjs';
 import { Accounts, google, cookie, cookies, randomToken } from './src/accounts.mjs';
@@ -28,7 +29,7 @@ const args = process.argv.slice(2);
 // --snapshot FILE, or BOARD_SNAPSHOT: show a saved board instead of a live one (a deployment
 // without Kite keys yet). Live Kite always wins once KITE_API_KEY is set.
 const snapshotFile = args.includes('--snapshot') ? args[args.indexOf('--snapshot') + 1]
-  : !process.env.KITE_API_KEY && process.env.BOARD_SNAPSHOT ? process.env.BOARD_SNAPSHOT : null;
+  : !process.env.KITE_API_KEY && !process.env.UPSTOX_API_KEY && process.env.BOARD_SNAPSHOT ? process.env.BOARD_SNAPSHOT : null;
 
 fs.mkdirSync(DATA, { recursive: true });
 
@@ -52,11 +53,16 @@ if (snapshotFile) fs.watchFile(snapshotFile, { interval: 1000 }, () => {
   try { board = JSON.parse(fs.readFileSync(snapshotFile, 'utf8')); push('board', board); } catch { /* mid-write; the next change catches it */ }
 });
 let status = snapshotFile ? 'snapshot' : 'signed_out';
-let note = snapshotFile ? `Saved board from ${path.basename(snapshotFile)}` : 'Sign in with Zerodha to start';
+let note = snapshotFile ? `Saved board from ${path.basename(snapshotFile)}` : "Sign in with your broker to start";
 const clients = new Set();
 
-const kite = new Kite(process.env.KITE_API_KEY || '', process.env.KITE_API_SECRET || '');
-const tokenFile = () => path.join(DATA, `token-${ymd()}.json`);
+// The data source: Upstox (free market data) when BROKER=upstox or its keys are set, else Zerodha Kite.
+const BROKER = (process.env.BROKER || (process.env.UPSTOX_API_KEY ? 'upstox' : 'kite')).toLowerCase();
+const kite = BROKER === 'upstox'
+  ? new Upstox(process.env.UPSTOX_API_KEY || '', process.env.UPSTOX_API_SECRET || '', (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '') + '/callback')
+  : new Kite(process.env.KITE_API_KEY || '', process.env.KITE_API_SECRET || '');
+const BNAME = kite.broker;
+const tokenFile = () => path.join(DATA, `token-${BROKER === 'upstox' ? 'upstox-' : ''}${ymd()}.json`);
 try { kite.accessToken = JSON.parse(fs.readFileSync(tokenFile(), 'utf8')).access_token; status = 'ready'; } catch { }
 
 /** Board events go to members only; status goes to everyone. */
@@ -75,7 +81,7 @@ const NO_DATA = 'Kite refused market data: this Kite Connect app has no market-d
   + 'the app needs the paid Connect plan (live quotes and historical candles), not the free Personal plan. Then press Connect Zerodha again.';
 function kiteFailed(e) {
   if (e.kiteType === 'PermissionException') setStatus('error', NO_DATA);
-  else if (sessionGone(e)) { kite.accessToken = ''; setStatus('signed_out', 'Zerodha session ended. Sign in again'); }
+  else if (sessionGone(e)) { kite.accessToken = ''; setStatus('signed_out', `${BNAME} session ended. Sign in again`); }
   else setStatus('error', 'Kite: ' + e.message);
 }
 
@@ -85,10 +91,10 @@ function kiteFailed(e) {
 let universe = null, daily = null, chains = null;
 /** NIFTY and BANKNIFTY: their quote, candles and option chain names. */
 const VIX = 'NSE:INDIA VIX';
-const INDICES = [{ name: 'NIFTY', quote: 'NSE:NIFTY 50', token: 256265 }, { name: 'BANKNIFTY', quote: 'NSE:NIFTY BANK', token: 260105 }];
+const INDICES = [{ name: 'NIFTY', quote: 'NSE:NIFTY 50', token: kite.indexTokens.NIFTY }, { name: 'BANKNIFTY', quote: 'NSE:NIFTY BANK', token: kite.indexTokens.BANKNIFTY }];
 let dailyDone = false, filling = false;
 async function prepare() {
-  const file = path.join(DATA, `prep-${ymd()}.json`);
+  const file = path.join(DATA, `prep-${BROKER === 'upstox' ? 'upstox-' : ''}${ymd()}.json`);
   try { let vt; ({ universe, daily, chains, dailyDone, vixToken: vt } = JSON.parse(fs.readFileSync(file, "utf8"))); if (vt) kite.vixToken = vt; } catch { universe = null; }
   if (!universe || !chains) {
     setStatus('preparing', 'Loading the F&O list from Kite');
@@ -193,7 +199,7 @@ async function runBacktest(days = 60) {
     const from = daysAgo(Math.ceil(days * 1.45)), trades = [], market = {};
     // the index and VIX over the same days, for the market filters
     try { market.nifty = seriesAt(await kite.historical(INDICES[0].token, '5minute', from, daysAgo(1))); } catch (e) { if (e.status === 403) throw e; }
-    try { market.vix = seriesAt(await kite.historical(kite.vixToken || 264969, '5minute', from, daysAgo(1))); } catch (e) { if (e.status === 403) throw e; }
+    try { market.vix = seriesAt(await kite.historical(kite.vixToken, '5minute', from, daysAgo(1))); } catch (e) { if (e.status === 403) throw e; }
     for (const u of universe) {
       try { trades.push(...replayStock(u.name, await kite.historical(u.token, '5minute', from, daysAgo(1)), market)); } catch (e) { if (e.status === 403) throw e; }
       bt.done++;
@@ -213,7 +219,7 @@ async function scan() {
   // NIFTY and VIX through the session so far, for each plan's market flags
   mkt = {};
   try { mkt.nifty = seriesAt(await fiveMin(INDICES[0].token)); } catch { }
-  try { mkt.vix = seriesAt(await fiveMin(kite.vixToken || 264969)); } catch { }
+  try { mkt.vix = seriesAt(await fiveMin(kite.vixToken)); } catch { }
   const q = await kite.quote([VIX, ...INDICES.map((i) => i.quote), ...universe.flatMap((u) => ['NSE:' + u.name, 'NFO:' + u.fut, ...(u.fut2 ? ['NFO:' + u.fut2] : [])])]);
   const oiNow = (u) => (q['NFO:' + u.fut]?.oi || 0) + (u.fut2 ? q['NFO:' + u.fut2]?.oi || 0 : 0) || undefined;
   const drift = oiDrift(universe.map((u) => ({ oi: oiNow(u), prevOi: daily[u.name]?.prevOi })));
@@ -465,7 +471,7 @@ http.createServer(async (req, res) => {
     if (p === '/app' || p === '/checkout') {
       if (!user) return redirect(res, '/login?next=' + p);
       if (p === '/checkout' && OPEN_ACCESS) return redirect(res, '/app');
-      return page(res, req, p === '/app' ? 'app.html' : 'site/checkout.html', { LOCKED: member(user) ? '' : '1', ADMIN: isAdmin(user) ? '1' : '', PER_DAY: PLANS[1].perDay });
+      return page(res, req, p === '/app' ? 'app.html' : 'site/checkout.html', { LOCKED: member(user) ? '' : '1', ADMIN: isAdmin(user) ? '1' : '', BROKER: BNAME, PER_DAY: PLANS[1].perDay });
     }
     if (p === '/api/me') {
       return json(res, 200, { user: meOf(user), plans: PLANS, razorpay: pay.ready ? { keyId: pay.keyId } : null, testPayments: !pay.ready && DEV_LOGIN, site: SITE });
@@ -520,7 +526,7 @@ http.createServer(async (req, res) => {
       if (!isAdmin(user)) return json(res, 403, { error: 'Admin only' });
       if (req.method === 'POST') {
         if (!csrfOk(req)) return json(res, 403, { error: 'Refresh the page and try again' });
-        if (!kite.accessToken) return json(res, 409, { error: 'Connect Zerodha first' });
+        if (!kite.accessToken) return json(res, 409, { error: `Connect ${BNAME} first` });
         runBacktest();
       }
       return json(res, 200, { ...bt });
@@ -529,17 +535,17 @@ http.createServer(async (req, res) => {
     /* the operator's daily Zerodha sign-in: admin only */
     if (p === '/admin/kite') {
       if (!isAdmin(user)) return redirect(res, '/login?next=/app');
-      if (!kite.apiKey) { res.writeHead(500).end('Set KITE_API_KEY and KITE_API_SECRET first.'); return; }
+      if (!kite.apiKey) { res.writeHead(500).end(BROKER === 'upstox' ? 'Set UPSTOX_API_KEY and UPSTOX_API_SECRET first.' : 'Set KITE_API_KEY and KITE_API_SECRET first.'); return; }
       return redirect(res, kite.loginUrl());
     }
     if (p === '/callback') {
       if (!isAdmin(user)) return redirect(res, '/login?next=/app');
       try {
-        const s = await kite.createSession(url.searchParams.get('request_token') || '');
+        const s = await kite.createSession(url.searchParams.get('request_token') || url.searchParams.get('code') || '');
         fs.writeFileSync(tokenFile(), JSON.stringify({ access_token: s.access_token }), { mode: 0o600 });
         setStatus('ready', 'Signed in'); loop();
         return redirect(res, '/app');
-      } catch (e) { res.writeHead(400).end('Zerodha sign-in failed: ' + e.message); return; }
+      } catch (e) { res.writeHead(400).end(`${BNAME} sign-in failed: ` + e.message); return; }
     }
 
     /* static files */

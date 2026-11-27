@@ -123,11 +123,12 @@ Without Kite, `npm run demo` serves a saved board from 17 Nov 2026.
 
 1. Install **Node.js LTS** (version 22 or newer) from https://nodejs.org/en/download.
 2. Download this repository: on GitHub, **Code → Download ZIP**, then unzip it (for example to `C:\ZoneBoard`).
-3. On developers.kite.trade, set your Connect app's **Redirect URL** to `http://127.0.0.1:8080/callback`.
+3. Market data comes from **Upstox** (free with an Upstox account): at https://account.upstox.com/developer/apps create an app
+   with **Redirect URL** `http://127.0.0.1:8080/callback`. (Zerodha Kite works too, with its paid Connect plan.)
 4. Double-click **start-zoneboard.bat**. The first time it opens `zoneboard.env` in Notepad:
-   fill in `KITE_API_KEY`, `KITE_API_SECRET` and a `SITE_PASSWORD`, save, close Notepad.
+   fill in `UPSTOX_API_KEY`, `UPSTOX_API_SECRET` and a `SITE_PASSWORD`, save, close Notepad.
 5. Double-click **start-zoneboard.bat** again. It installs what it needs once, starts ZoneBoard and opens
-   http://127.0.0.1:8080 in your browser. Sign in with your password, then press **Connect Zerodha**.
+   http://127.0.0.1:8080 in your browser. Sign in with your password, then press **Connect Upstox**.
 
-Keep the black window open while you use the board; closing it stops ZoneBoard. Zerodha signs you out
-every morning, so press Connect Zerodha once each trading day. `zoneboard.env` holds your keys: don't share it.
+Keep the black window open while you use the board; closing it stops ZoneBoard. Upstox signs you out at 03:30
+every night, so press Connect Upstox once each trading day. `zoneboard.env` holds your keys: don't share it.
